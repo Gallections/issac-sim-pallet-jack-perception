@@ -42,6 +42,14 @@ class KittiValidationReport:
         return not self.issues
 
 
+class KittiExportValidationError(ValueError):
+    """Raised when a workflow requires a valid export but validation finds issues."""
+
+    def __init__(self, report: KittiValidationReport) -> None:
+        self.report = report
+        super().__init__(f"source dataset has {len(report.issues)} validation issue(s)")
+
+
 def _add_issue(report: KittiValidationReport, scenario: str, path: Path | str, message: str) -> None:
     try:
         base = report.root / scenario if scenario else report.root

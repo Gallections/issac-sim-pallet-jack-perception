@@ -1,4 +1,4 @@
-"""Create deterministic train/validation/test manifests from a validated export."""
+"""Create deterministic train, validation, and test split manifests."""
 
 from pathlib import Path
 import sys

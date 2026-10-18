@@ -4,7 +4,7 @@ A project for generating synthetic pallet-jack perception data in NVIDIA Isaac S
 
 ## Project status
 
-Initial project setup. A read-only validator for the Isaac Sim KITTI-style export is available; conversion, training, evaluation, and simulator inference workflows are not implemented yet.
+Initial data-preparation workflow. A read-only validator, split-manifest creator, raw-data processor, and KITTI-to-YOLO converter are available; model training, evaluation, and simulator inference workflows are not implemented yet.
 
 ## Repository layout
 - `simulation/` - Synthetic Data Generation setup resources for Issac Sim.
@@ -22,10 +22,11 @@ Initial project setup. A read-only validator for the Isaac Sim KITTI-style expor
 
 1. Generate and export synthetic data from Isaac Sim.
 2. Document and validate image/annotation pairs (read-only validator available).
-3. Convert annotations to the selected detector format and create leakage-aware splits.
-4. Fine-tune a pretrained detector in an external Python environment.
-5. Evaluate synthetic and real images separately.
-6. Export and validate inference in Isaac Sim.
+3. Create reproducible train/validation/test split manifests.
+4. Copy only RGB images and KITTI object-detection labels into `data/processed/`, then convert the copied labels to YOLO format.
+5. Fine-tune a pretrained detector in an external Python environment.
+6. Evaluate synthetic and real images separately.
+7. Export and validate inference in Isaac Sim.
 
 See `docs/` for the workflow notes. Dataset dimensions, split strategy, model choice, and hardware requirements will be recorded once confirmed; none are assumed in this scaffold.
 
@@ -50,10 +51,31 @@ It does not modify the dataset. See `docs/data.md` for the checks and current ex
 
 ## Create synthetic data splits
 
-After validation, create reproducible scenario-stratified CSV manifests:
+Create reproducible scenario-stratified split manifests:
 
 ```bash
 python scripts/create_splits.py
 ```
 
-The default is an 80/10/10 train/validation/test split with seed `42`. It writes `train.csv`, `validation.csv`, and `test.csv` under `data/processed/splits/`. The manifests reference the original images and labels; the script does not copy or modify raw data. See `docs/data.md` for details and options.
+The default is an 80/10/10 train/validation/test split with seed `42`. This step only assigns frames and writes CSV manifests under `data/processed/splits/`; it does not copy or convert data. The manifests record each raw image and KITTI label path, plus the intended processed paths. Use `--overwrite` to regenerate existing manifests. See `docs/data.md` for details.
+
+## Process selected raw data
+
+After creating the split manifests, copy the selected RGB images and KITTI labels into `data/processed/`, convert those copied labels, and create the YOLO dataset config:
+
+```bash
+python scripts/process_raw_data.py
+```
+
+The processor calls the converter function for each copied annotation. It preserves the KITTI labels under `data/processed/kitti_labels/`, writes YOLO labels under `data/processed/labels/`, and copies RGB images under `data/processed/images/`. Other raw modalities such as depth and segmentation are not copied. The processed image copy will use about the same storage as the selected raw RGB images.
+
+The YOLO converter is also available as a focused one-annotation command:
+
+```bash
+python scripts/convert_kitti_to_yolo.py \
+  --kitti-label path/to/frame.txt \
+  --image path/to/frame.png \
+  --output-label path/to/yolo/frame.txt
+```
+
+The reusable conversion functions live in `src/palletjack_detection/kitti_to_yolo.py`; they only convert KITTI bounding boxes into normalized YOLO label rows.
