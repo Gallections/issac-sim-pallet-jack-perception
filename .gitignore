@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# Data and generated artifacts
+/data/raw/**
+/data/processed/**
+/runs/**
+/models/**
+
+# Keep placeholders so the directory layout is visible in a fresh clone
+!/data/raw/.gitkeep
+!/data/processed/.gitkeep
+!/runs/.gitkeep
+!/models/.gitkeep
+
+# Local notes for learning
+PersonalNote.md
