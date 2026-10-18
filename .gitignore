@@ -20,3 +20,5 @@ venv/
 
 # Local notes for learning
 PersonalNote.md
+
+.venv/

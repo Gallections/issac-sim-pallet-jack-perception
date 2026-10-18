@@ -1,0 +1,2 @@
+# Runtime dependencies for dataset validation and image inspection.
+Pillow>=10

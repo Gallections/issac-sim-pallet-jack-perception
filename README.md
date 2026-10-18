@@ -4,7 +4,7 @@ A project for generating synthetic pallet-jack perception data in NVIDIA Isaac S
 
 ## Project status
 
-Initial project scaffold. Dataset conversion, training, evaluation, and simulator inference workflows are not implemented yet.
+Initial project setup. A read-only validator for the Isaac Sim KITTI-style export is available; conversion, training, evaluation, and simulator inference workflows are not implemented yet.
 
 ## Repository layout
 - `simulation/` - Synthetic Data Generation setup resources for Issac Sim.
@@ -21,10 +21,29 @@ Initial project scaffold. Dataset conversion, training, evaluation, and simulato
 ## Planned workflow
 
 1. Generate and export synthetic data from Isaac Sim.
-2. Document and validate image/annotation pairs.
+2. Document and validate image/annotation pairs (read-only validator available).
 3. Convert annotations to the selected detector format and create leakage-aware splits.
 4. Fine-tune a pretrained detector in an external Python environment.
 5. Evaluate synthetic and real images separately.
 6. Export and validate inference in Isaac Sim.
 
 See `docs/` for the workflow notes. Dataset dimensions, split strategy, model choice, and hardware requirements will be recorded once confirmed; none are assumed in this scaffold.
+
+## Validate the raw export
+
+Install the runtime dependencies in the project's Python environment, then run from the repository root:
+
+```powershell
+python -m pip install -r requirements.txt
+python scripts/validate_dataset.py
+```
+
+For importing the package directly from other locations, install the project in editable mode with `python -m pip install -e .`.
+
+The validator reads from `data/raw/`, prints per-scenario counts and issues, and exits with status `0` when no issues are found or `1` when it finds issues. To validate another directory or show more issue details:
+
+```powershell
+python scripts/validate_dataset.py --root path/to/export --max-issues 200
+```
+
+It does not modify the dataset. See `docs/data.md` for the checks and current export notes.
