@@ -47,3 +47,13 @@ python scripts/validate_dataset.py --root path/to/export --max-issues 200
 ```
 
 It does not modify the dataset. See `docs/data.md` for the checks and current export notes.
+
+## Create synthetic data splits
+
+After validation, create reproducible scenario-stratified CSV manifests:
+
+```bash
+python scripts/create_splits.py
+```
+
+The default is an 80/10/10 train/validation/test split with seed `42`. It writes `train.csv`, `validation.csv`, and `test.csv` under `data/processed/splits/`. The manifests reference the original images and labels; the script does not copy or modify raw data. See `docs/data.md` for details and options.

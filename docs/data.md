@@ -73,6 +73,29 @@ The validator was run on the local export on 2026-10-18. It found no structural 
 
 Empty annotations were accepted and counted as negative frames. The clean report is evidence of file pairing and the checks above; it does not settle the coordinate-edge convention or validate KITTI 3D values.
 
+## Synthetic train/validation/test split
+
+The frames are independent scenes, so the first experiment uses a seeded random split within each of the three scenario groups. The default proportions are 80% training, 10% validation, and 10% test, with random seed `42`. For the current dataset this produces:
+
+| Group | Train | Validation | Test |
+|---|---:|---:|---:|
+| `distractors_additional` | 1,600 | 200 | 200 |
+| `distractors_warehouse` | 1,600 | 200 | 200 |
+| `no_distractors` | 800 | 100 | 100 |
+| **Total** | **4,000** | **500** | **500** |
+
+Generate the split manifests from the repository root after installing dependencies:
+
+```bash
+python scripts/create_splits.py
+```
+
+The script revalidates the source export before writing anything. It writes `train.csv`, `validation.csv`, and `test.csv` under `data/processed/splits/`. Each row records the split, scenario, frame ID, and image/annotation paths relative to the dataset root. It does not copy or alter raw images or annotations. Blank annotation files remain in their assigned split as negative examples. Re-running with the same source and seed produces the same assignments.
+
+Use `--seed`, `--root`, or `--output-dir` to change the seed, source root, or manifest location. The proportions can be changed with `--train-ratio`, `--validation-ratio`, and `--test-ratio`; they must be positive and sum to 1.0. These CSV manifests record the split, but do not yet convert labels or build the directory layout required by a training framework.
+
+Real photographs will be collected and evaluated separately later; they are not part of these synthetic manifests.
+
 After validation, document the target detector format and conversion rules, then write derived labels to `data/processed/`. Keep the scenario identity available in manifests or split metadata so evaluation can report results by condition. Split by independent scene/capture groups if that information is available; avoid assigning near-duplicate frames from the same capture across training and evaluation splits.
 
 ## Real-image evaluation data
