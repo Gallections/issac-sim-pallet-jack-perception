@@ -11,6 +11,8 @@ venv/
 /data/processed/**
 /runs/**
 /models/**
+/yolo26n.pt
+# I used yolo26n.pt as the base model for fine tuning.
 
 # Keep placeholders so the directory layout is visible in a fresh clone
 !/data/raw/.gitkeep
@@ -20,5 +22,6 @@ venv/
 
 # Local notes for learning
 PersonalNote.md
+local/
 
 .venv/

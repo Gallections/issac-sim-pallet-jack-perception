@@ -1,0 +1,12 @@
+# Baseline settings for fine-tuning a pretrained detector on the processed dataset.
+# `imgsz` is the model input size and does not change the 960x544 source images.
+model: yolo26n.pt
+dataset_yaml: data/processed/dataset.yaml
+epochs: 100
+imgsz: 640
+batch: 16
+device: null
+seed: 42
+workers: 4
+project: runs/detect
+name: palletjack-detection-yolo26n-seed42

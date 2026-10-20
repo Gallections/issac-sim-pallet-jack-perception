@@ -1,6 +1,6 @@
 # Data workflow
 
-This document records the current local Isaac Sim synthetic-data export and the planned path into object-detection training. The raw export is kept as source data; processing scripts should write derived files under `data/processed/` and leave the raw files unchanged.
+This document records the current local Isaac Sim synthetic-data export and the path into object-detection training. The raw export is kept as source data; processing scripts write derived files under `data/processed/` and leave the raw files unchanged.
 
 ## Current synthetic datasets
 
@@ -14,14 +14,14 @@ The local export contains three scenario groups:
 
 Each group is under `data/raw/<group>/Camera/` and contains these numbered, zero-based output folders:
 
-- `rgb/` — color images, the planned detector input.
-- `object_detection/` — KITTI-style text annotations, the planned detector targets.
+- `rgb/` — color images used as the detector input.
+- `object_detection/` — KITTI-style text annotations converted to YOLO targets during processing.
 - `depth/` — depth images.
 - `instance_segmentation/` — instance segmentation images.
 - `semantic/` — semantic output images.
 - `semantic_segmentation/` — semantic segmentation images.
 
-A local inventory found matching file indices in all six folders within each group: `0`–`999` for `no_distractors`, and `0`–`1999` for each distractor group. This is an initial structural check, not a full image/label validity check. The other camera outputs are retained in the raw export for possible future uses; the first object-detection workflow is expected to use RGB plus `object_detection` labels.
+A local inventory found matching file indices in all six folders within each group: `0`–`999` for `no_distractors`, and `0`–`1999` for each distractor group. This is an initial structural check, not a full image/label validity check. The other camera outputs are retained in the raw export for possible future uses; the object-detection workflow uses RGB plus `object_detection` labels. Images are reported as 960×544; validation reads actual dimensions from each file.
 
 Each group also has a `metadata.txt` identifying the writer as `KittiWriter`, version `0.0.2`, and recording a Replicator global seed. Preserve these metadata files with the raw data.
 
@@ -55,11 +55,11 @@ The validator checks that required `Camera/rgb` and `Camera/object_detection` fo
 
 This is a validator for the 2D object-detection fields, not a full semantic validation of KITTI's 3D dimensions and pose values. It checks that the remaining fields are present and numeric, but does not interpret them; the current export includes zero-filled 3D fields.
 
-The upper box edge is allowed to equal the image width or height because the exact coordinate convention of this export has not yet been confirmed. Values beyond those limits are reported. Review this convention before label conversion.
+The validator permits an upper box edge equal to the image width or height. The writer's exact coordinate convention has not been confirmed, so conversion currently uses the inclusive-pixel convention as a documented working assumption. The converter and processor expose `--exclusive-max-coordinates` if evidence establishes that the writer uses exclusive upper edges.
 
-## Planned preparation and checks
+## Preparation workflow and checks
 
-After reviewing the validator report, resolve or document any issues before converting labels. The validator summarizes counts and issues separately for each scenario.
+The validator summarizes counts and issues separately for each scenario. The following validation and preparation steps have been run for the current export.
 
 ### Current validation result
 
@@ -136,8 +136,8 @@ Real pallet-jack photographs are not currently included. Near the evaluation sta
 
 - Isaac Sim version, scene/source project, camera configuration, and exact SDG export settings.
 - Dataset origin and applicable asset/data license or usage restrictions.
-- Image dimensions and file-readability status across the full export.
+- Isaac Sim image dimensions are reported as 960×544; validation reads each image's actual dimensions.
 - KITTI coordinate conventions, including whether maximum box coordinates are inclusive or exclusive.
 - Whether frames are independent captures or sequences, and what grouping information is available for leakage-aware splits.
-- Final target detector format and split policy.
+- Whether future experiments should change the current YOLO format or 80/10/10 split policy.
 - Provenance and licensing for any real-image evaluation set.

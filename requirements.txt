@@ -1,2 +1,5 @@
-# Runtime dependencies for dataset validation and image inspection.
+# Project dependencies for data preparation and Ultralytics training.
+# Install a hardware-matched PyTorch build separately; see docs/training.md.
 Pillow>=10
+PyYAML>=6.0
+ultralytics>=8.4.0

@@ -1,6 +1,6 @@
 # Isaac Sim Synthetic Data Generation
 
-This directory contains the Isaac Sim project and scripts used to generate synthetic pallet-jack perception data.
+This directory is reserved for the Isaac Sim project resources and scripts used to generate synthetic pallet-jack perception data. The current repository has the folder layout documented below, but no simulation scripts or configs have been added yet.
 
 ## Scope
 
@@ -16,7 +16,7 @@ This directory contains the Isaac Sim project and scripts used to generate synth
 
 ## Runtime
 
-Document the Isaac Sim version, extensions, launch method, and required environment here before running scripts. Isaac Sim scripts may use its bundled Python runtime and may not run in the project's regular training environment.
+Before adding or running scripts, document the Isaac Sim version, extensions, launch method, and required environment here. Isaac Sim scripts may use its bundled Python runtime and may not run in the project's regular training environment.
 
 ## Data handoff
 

@@ -7,7 +7,10 @@ name = "isaac-sim-pallet-jack-perception"
 version = "0.1.0"
 description = "Data preparation and object detection workflows for Isaac Sim pallet-jack perception."
 requires-python = ">=3.10"
-dependencies = ["Pillow>=10"]
+dependencies = ["Pillow>=10", "PyYAML>=6.0"]
+
+[project.optional-dependencies]
+training = ["ultralytics>=8.4.0"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

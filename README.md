@@ -4,10 +4,10 @@ A project for generating synthetic pallet-jack perception data in NVIDIA Isaac S
 
 ## Project status
 
-Initial data-preparation workflow. A read-only validator, split-manifest creator, raw-data processor, and KITTI-to-YOLO converter are available; model training, evaluation, and simulator inference workflows are not implemented yet.
+Data preparation is implemented, and a configurable Ultralytics training stage is available. The training setup has not yet been manually reviewed or used for a real training run. Held-out test evaluation, separate real-photo evaluation, and simulator inference remain future stages.
 
 ## Repository layout
-- `simulation/` - Synthetic Data Generation setup resources for Issac Sim.
+- `simulation/` - Isaac Sim synthetic data generation resources.
 - `configs/` — dataset and experiment configuration.
 - `data/raw/` — source datasets (kept out of Git).
 - `data/processed/` — converted datasets and splits (kept out of Git).
@@ -28,11 +28,11 @@ Initial data-preparation workflow. A read-only validator, split-manifest creator
 6. Evaluate synthetic and real images separately.
 7. Export and validate inference in Isaac Sim.
 
-See `docs/` for the workflow notes. Dataset dimensions, split strategy, model choice, and hardware requirements will be recorded once confirmed; none are assumed in this scaffold.
+See `docs/` for workflow notes. The current source images are reported as 960×544; splits use a seeded 80/10/10 scenario-stratified assignment; and the starter training config uses `yolo26n.pt` with a 640-pixel model input. Training hardware and the KITTI upper-box-edge convention still need confirmation.
 
 ## Validate the raw export
 
-Install the runtime dependencies in the project's Python environment, then run from the repository root:
+Install the base dependencies in the project's Python environment, then run from the repository root:
 
 ```powershell
 python -m pip install -r requirements.txt
