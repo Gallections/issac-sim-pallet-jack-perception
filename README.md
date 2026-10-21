@@ -4,7 +4,7 @@ A project for generating synthetic pallet-jack perception data in NVIDIA Isaac S
 
 ## Project status
 
-Data preparation is implemented, and a configurable Ultralytics training stage is available. The training setup has not yet been manually reviewed or used for a real training run. Held-out test evaluation, separate real-photo evaluation, and simulator inference remain future stages.
+Data preparation and configurable Ultralytics training are implemented; a baseline training run has completed. A command-line tool can save annotated predictions for real images, and a Jupyter notebook is available for exploring saved training runs. Quantitative held-out test evaluation, labeled real-photo evaluation, and simulator inference remain future stages.
 
 ## Repository layout
 - `simulation/` - Isaac Sim synthetic data generation resources.
@@ -13,6 +13,7 @@ Data preparation is implemented, and a configurable Ultralytics training stage i
 - `data/processed/` — converted datasets and splits (kept out of Git).
 - `docs/` — data, training, evaluation, and integration notes.
 - `models/` — downloaded or trained model weights (kept out of Git).
+- `notebooks/` — interactive training-results exploration.
 - `runs/` — training outputs and experiment artifacts (kept out of Git).
 - `scripts/` — command-line workflow entry points.
 - `src/palletjack_detection/` — reusable project code.
@@ -25,7 +26,7 @@ Data preparation is implemented, and a configurable Ultralytics training stage i
 3. Create reproducible train/validation/test split manifests.
 4. Copy only RGB images and KITTI object-detection labels into `data/processed/`, then convert the copied labels to YOLO format.
 5. Fine-tune a pretrained detector in an external Python environment.
-6. Evaluate synthetic and real images separately.
+6. Evaluate the held-out synthetic test set and inspect real-image predictions separately.
 7. Export and validate inference in Isaac Sim.
 
 See `docs/` for workflow notes. The current source images are reported as 960×544; splits use a seeded 80/10/10 scenario-stratified assignment; and the starter training config uses `yolo26n.pt` with a 640-pixel model input. Training hardware and the KITTI upper-box-edge convention still need confirmation.

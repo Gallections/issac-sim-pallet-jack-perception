@@ -1,5 +1,8 @@
-# Project dependencies for data preparation and Ultralytics training.
+# Project dependencies for data preparation, Ultralytics training, and notebook exploration.
 # Install a hardware-matched PyTorch build separately; see docs/training.md.
 Pillow>=10
 PyYAML>=6.0
 ultralytics>=8.4.0
+matplotlib>=3.8
+jupyterlab>=4.0
+ipykernel>=6.0

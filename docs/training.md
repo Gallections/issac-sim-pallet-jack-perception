@@ -41,4 +41,20 @@ For a short first run, temporarily set `epochs` to a small value, `workers` to `
 
 Ultralytics writes checkpoints, metrics, logs, and plots beneath the configured `project/name` directory (by default, `runs/detect/palletjack-yolo26n-seed42/`). The run directory also receives `training_config.yaml`, a copy of the dataset YAML with its root resolved, and `runtime_metadata.json` with Python, Ultralytics, and PyTorch versions. These generated artifacts remain excluded from Git.
 
-Training and validation results can later be explored in a results notebook. That notebook is a separate feature and has not been added. Held-out test evaluation, real-photo evaluation, and Isaac Sim inference are also separate later stages.
+The real-image prediction visualizer is available as a separate command. Quantitative held-out synthetic test evaluation, quantitative real-photo evaluation with labeled images, and Isaac Sim inference remain separate later stages.
+
+## Explore a saved run in Jupyter
+
+The notebook at `notebooks/01_explore_training_results.ipynb` lets you select a saved run and inspect its per-epoch losses and validation metrics, confusion matrices, and validation prediction images. It does not use the held-out test split.
+
+Install the notebook dependencies from the project's single requirements file if needed. Register the active virtual environment as a Jupyter kernel once, then start JupyterLab from the repository root:
+
+```bash
+python -m pip install -r requirements.txt
+python -m ipykernel install --user --name palletjack-detection --display-name "Python (Pallet Jack Detection)"
+jupyter lab notebooks/01_explore_training_results.ipynb
+```
+
+In JupyterLab, select the `Python (Pallet Jack Detection)` kernel if it is not selected automatically. This keeps notebook code running in the environment where the project dependencies and trained-model support are installed.
+
+Edit `RUN_NAME` in the first code cell to choose another directory under `runs/detect`. The optional real-image cell uses photos in `local/real-images` and calls the same prediction function as `scripts/predict_real_images.py`; set `RUN_REAL_IMAGE_PREDICTION = True` to opt in. The separate training cell is also off by default and only starts a run if you set `START_TRAINING = True` and execute that cell.
