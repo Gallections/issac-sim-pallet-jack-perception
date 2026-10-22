@@ -47,6 +47,8 @@ class TrainingResultsNotebookTests(unittest.TestCase):
         self.assertIn("confusion_matrix.png", self.code)
         self.assertIn("val_batch", self.code)
         self.assertIn("metrics/mAP50-95(B)", self.code)
+        self.assertIn("BoxPR_curve.png", self.code)
+        self.assertIn("precision-recall curve", self.markdown)
 
     def test_missing_run_artifacts_show_recovery_guidance(self) -> None:
         self.assertIn("choose another run", self.code.lower())
@@ -68,6 +70,7 @@ class TrainingResultsNotebookTests(unittest.TestCase):
                 encoding="utf-8",
             )
             for image_name in (
+                "BoxPR_curve.png",
                 "confusion_matrix.png",
                 "confusion_matrix_normalized.png",
                 "val_batch0_labels.jpg",
@@ -152,3 +155,4 @@ class TrainingResultsNotebookTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -45,7 +45,7 @@ The real-image prediction visualizer is available as a separate command. Quantit
 
 ## Explore a saved run in Jupyter
 
-The notebook at `notebooks/01_explore_training_results.ipynb` lets you select a saved run and inspect its per-epoch losses and validation metrics, confusion matrices, and validation prediction images. It does not use the held-out test split.
+The notebook at `notebooks/01_explore_training_results.ipynb` lets you select a saved run and inspect its per-epoch losses and validation metrics, precision–recall curve, confusion matrices, and ground-truth-versus-prediction images. It does not use the held-out test split.
 
 Install the notebook dependencies from the project's single requirements file if needed. Register the active virtual environment as a Jupyter kernel once, then start JupyterLab from the repository root:
 
