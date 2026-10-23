@@ -1,23 +1,32 @@
 # Isaac Sim Synthetic Data Generation
 
-This directory is reserved for the Isaac Sim project resources and scripts used to generate synthetic pallet-jack perception data. The current repository has the folder layout documented below, but no simulation scripts or configs have been added yet.
+This project generates pallet-jack detection data in NVIDIA Isaac Sim with Replicator. It starts from the Simple Warehouse environment, randomizes the scene for each render, and uses semantic labels to export KITTI-style object-detection annotations alongside rendered images.
 
-## Scope
+## Generator
 
-- Build or configure the simulation scenes and assets used for data generation.
-- Run synthetic data generation (SDG) workflows and record their settings.
-- Export images and annotations for the downstream detection pipeline.
+The main script is [`scripts/palletjack_sdg/standalone_palletjack_sdg.py`](scripts/palletjack_sdg/standalone_palletjack_sdg.py). It must run with Isaac Sim's Python runtime because it imports Kit, Omniverse, USD, and Replicator modules; the model-training virtual environment is not a substitute.
 
-## Contents
+The script accepts these main options:
 
-- `scripts/` — Isaac Sim scripts for scene setup, SDG, and export.
-- `configs/` — simulation and SDG settings that are safe to version.
-- `assets/` — small project-owned assets or references. Do not commit large or restricted assets without checking their license and size.
+| Option | Default | Purpose |
+| --- | --- | --- |
+| `--height` | `544` | Render height in pixels |
+| `--width` | `960` | Render width in pixels |
+| `--num_frames` | `1000` | Number of independently randomized frames to render |
+| `--distractors` | `warehouse` | `warehouse`, `additional`, or `None` |
+| `--data_dir` | `<current working directory>/_palletjack_data` | Export destination |
+| `--headless` | `False` | Launch without a visible simulator UI |
 
-## Runtime
+The three existing collections were generated at 960x544: 2,000 warehouse-distractor frames, 2,000 additional-distractor frames, and 1,000 frames without an added distractor group. “No distractors” still uses the warehouse environment; it omits the extra randomized distractor objects.
 
-Before adding or running scripts, document the Isaac Sim version, extensions, launch method, and required environment here. Isaac Sim scripts may use its bundled Python runtime and may not run in the project's regular training environment.
+For each frame, Replicator samples a camera pose, pallet-jack placement and rotation, lighting values, and floor/wall material properties. The pallet-jack USD assets are tagged with the semantic class `palletjack`, which is used by the KITTI writer to produce annotations automatically. The resulting frames are independent randomized scene states, not consecutive samples from a continuous camera trajectory.
 
-## Data handoff
+The generated sample frames and walkthrough video are linked in the [main README](../README.md#how-the-synthetic-data-is-generated).
 
-Export generated images and annotations to the local `data/raw/` directory (or another documented location). Generated datasets are excluded from Git; keep the export layout and annotation schema documented in `docs/data.md`.
+## Launch helpers and paths
+
+`scripts/generate_data.bat` and `scripts/generate_data.sh` are convenience launchers for the three conditions. Before using a launcher on another machine, set its Isaac Sim installation path and verify its repository/script/output paths. Isaac Sim installations, asset server availability, and mounted Omniverse assets are machine-specific. The generator itself writes to the directory passed with `--data_dir`; keep exported data under the repository's ignored `data/raw/` tree if you want the documented preparation workflow to find it.
+
+## Handoff to the perception pipeline
+
+The generator exports the source dataset; it does not perform splitting, YOLO conversion, model training, or model evaluation. Those steps are separate commands documented in the [main README](../README.md) and [data preparation guide](../docs/data.md). Raw exports should be retained so processed splits and labels can be regenerated.

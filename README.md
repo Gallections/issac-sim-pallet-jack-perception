@@ -7,49 +7,106 @@ The repository keeps the work in distinct stages: simulator-based synthetic data
 ## At a glance
 
 - **Task:** detect the `palletjack` object and return its image bounding box.
-- **Synthetic source data:** 5,000 independent Isaac Sim scenes across three conditions.
+- **Synthetic source data:** 5,000 independently randomized rendered frames from a shared Isaac Sim warehouse environment, across three conditions.
 - **Dataset splits:** 4,000 train, 500 validation, and 500 held-out test images (80/10/10, seed 42).
 - **Baseline:** fine-tuned Ultralytics YOLO26n, 100 epochs, 640-pixel model input, batch size 16.
-- **Current state:** data validation and preparation, training, prediction visualization, and an interactive results notebook are available. The plots below report validation performance only.
-- **Not yet complete:** held-out test evaluation, a labeled real-image benchmark, and Isaac Sim inference integration.
+- **Current state:** data preparation, training, prediction visualization, an interactive results notebook, and held-out synthetic test evaluation are available.
+- **Not yet complete:** a labeled real-image benchmark and Isaac Sim inference integration.
 
-## What the pipeline does
+## Why this project matters
+
+This project tests a practical sim-to-real research question: **can pallet-jack examples generated in Isaac Sim provide useful training data for an object detector, and how well does the resulting detector perform on unseen scenes?** Synthetic generation makes it possible to create varied, automatically annotated examples without manually labeling every frame. That can reduce the cost of building an initial perception dataset and makes controlled scenario variation possible.
+
+The current experiment is an initial, reproducible synthetic-data baseline. The model is fine-tuned outside Isaac Sim and evaluated on a held-out synthetic split. Its results show performance on unseen samples from the same synthetic data collection—not real-world accuracy, robustness to deployment conditions, or readiness for a robot. Those claims require separately collected and labeled real images, followed by integration and testing in the target system.
+
+The research contribution at this stage is the documented end-to-end method and its baseline measurement: controlled synthetic scene variation, automatically generated labels, a reproducible data-preparation and split process, external fine-tuning, and held-out evaluation. The current result is a starting point for later comparisons. It does not yet quantify which randomization choices help most, compare synthetic and real performance, or show that synthetic training data can replace real data.
+
+## Research workflow
 
 ```mermaid
 flowchart LR
-    A[Isaac Sim scenes] --> B[Raw RGB and KITTI labels]
-    B --> C[Validate raw export]
-    C --> D[Seeded train / validation / test manifests]
-    D --> E[Copy RGB and preserve KITTI labels]
-    E --> F[Convert boxes to YOLO labels]
-    F --> G[Fine-tune YOLO externally]
-    G --> H[Explore training and validation artifacts]
-    G --> I[Evaluate held-out synthetic test set - planned]
-    G --> J[Inspect real photos; labeled evaluation - planned]
-    G --> K[Isaac Sim inference integration - planned]
+    A[Isaac Sim base warehouse] --> B[Randomize one scene state per frame]
+    B --> C[Replicator renders RGB and writes labels]
+    C --> D[Raw scenario exports]
+    D --> E[Validate raw KITTI annotations]
+    E --> F[Create seeded split manifests]
+    F --> G[Copy selected RGB and preserve KITTI labels]
+    G --> H[Convert KITTI boxes to YOLO labels]
+    H --> I[Fine-tune YOLO externally]
+    I --> J[Explore training and validation artifacts]
+    I --> K[Evaluate held-out synthetic test set]
+    I --> L[Build labeled real-image benchmark - planned]
+    I --> M[Integrate inference in Isaac Sim - planned]
 ```
 
-The simulator creates the source data; training runs in a normal Python environment with PyTorch and Ultralytics. This separation keeps the training workflow repeatable without requiring Isaac Sim to be open while a model is being trained.
+Isaac Sim creates the source data; training and evaluation run separately in a standard Python environment with PyTorch and Ultralytics. This keeps model work repeatable without requiring the simulator to stay open.
+
+## How the synthetic data is generated
+
+The data-generation script starts from Isaac Sim's Simple Warehouse environment. For each requested frame, NVIDIA Replicator samples a new scene state, renders that state, and exports image data with labels. The training examples are therefore **independent randomized frames**, not a set of consecutive frames from one continuous camera recording. They share a base warehouse environment while camera, object, material, and lighting settings vary between frames.
+
+The generator adds pallet-jack assets and tags them with the semantic class `palletjack`. It samples camera position and orientation, and varies pallet-jack placement and rotation. It also randomizes floor and wall materials and lighting. Depending on the run, it adds warehouse props, props drawn from additional asset groups, or no extra distractor group. “No distractors” means no additional randomized distractors are added; the base warehouse environment remains.
+
+Replicator's KITTI writer exports the rendered RGB frames and KITTI-style object-detection annotations. The pallet-jack semantic tags let the writer create object labels automatically, avoiding manual box drawing for synthetic images. The downstream detector currently uses RGB plus the 2D boxes only; other modalities present in the raw export are retained as source data but are outside this baseline's training input.
+
+The current collection contains three generation conditions:
+
+| Generation condition | Frames | How the condition is built |
+| --- | ---: | --- |
+| `distractors_warehouse` | 2,000 | Base warehouse plus randomized warehouse props such as signs, containers, and carts |
+| `distractors_additional` | 2,000 | Base warehouse plus distractors selected from additional asset groups, including hospital and office props |
+| `no_distractors` | 1,000 | Base warehouse and pallet jacks, without an added distractor group |
+
+The current generator requests 960x544 renders. These examples illustrate frames from each condition; green boxes show the generated ground-truth pallet-jack labels.
+
+| Warehouse distractors | Additional distractors | No added distractors |
+| --- | --- | --- |
+| ![Isaac Sim synthetic frame with warehouse distractors and generated pallet-jack annotation](docs/assets/sdg/distractors_warehouse.jpg) | ![Isaac Sim synthetic frame with additional distractors and generated pallet-jack annotation](docs/assets/sdg/distractors_additional.jpg) | ![Isaac Sim synthetic frame without added distractors and generated pallet-jack annotations](docs/assets/sdg/no_distractors.jpg) |
+
+The walkthrough is shown inline as a clickable preview; select it to open the [scene-generation video](docs/assets/sdg/SDG_sample0.mov):
+
+[![Play the Isaac Sim scene-generation walkthrough](docs/assets/sdg/walkthrough-poster.jpg)](docs/assets/sdg/SDG_sample0.mov)
+
+GitHub README pages do not play repository-relative video files directly, so this preview links to the video file. The implementation is in [`simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py`](simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py); its Isaac Sim runtime requirements and generation settings are summarized in [`simulation/README.md`](simulation/README.md).
+
+## From generated frames to a detector
+
+The data flow preserves both the source annotations and the model-ready annotations. Raw Isaac Sim outputs live in `data/raw/` and are not edited by preparation steps. The validator checks image/annotation pairs and box geometry. A seeded split step assigns every frame to train, validation, or test; the preparation step then copies selected RGB images and original KITTI labels into `data/processed/`, converts the boxes to normalized YOLO text labels, and writes the dataset YAML. This separation makes the raw export auditable and allows the processed dataset to be regenerated.
+
+The pretrained YOLO26n detector is fine-tuned outside the simulator on the train split. Validation data guides checkpoint selection. The selected checkpoint is then evaluated on the held-out synthetic test split. A future real-world claim needs separately sourced, labeled real images; running inference on unlabeled photos is useful visual review but cannot produce precision, recall, or mAP.
+
+### Experimental design and what the metrics mean
+
+Frames are split within each generation condition using a fixed seed, so every condition contributes to train, validation, and test. The training split updates the model weights; validation supports checkpoint selection; the held-out test split is reserved for the reported final synthetic score. Since frames are separate randomized states rather than adjacent video frames, this design reduces direct frame-to-frame leakage. It still tests generalization within the same simulator assets and base environment.
+
+Precision reflects how many predicted boxes are correct at the metric's operating point; recall reflects how many labeled objects are detected. `mAP50` summarizes average precision at an intersection-over-union (IoU) threshold of 0.50. `mAP50–95` averages that measure over IoU thresholds from 0.50 through 0.95, so it rewards tighter localization as well as detection. For this one-class project, “mean” is over the pallet-jack class. These scores are useful for comparing detector behavior on this dataset, but they do not replace testing under real camera, lighting, background, and occlusion conditions.
 
 ## Baseline results
 
 The current baseline used `yolo26n.pt`, seed 42, 100 epochs, a 640 input size, and batch size 16. The selected checkpoint is `best.pt`, chosen using validation mAP50-95. In this run, its best validation mAP50-95 was **0.79183 at epoch 89**. At that epoch, validation precision was **0.93125**, recall **0.82429**, and mAP50 **0.90984**.
 
-These are measurements on the 500-image **validation split**. The 500-image test split has not yet been evaluated, so these figures should not be presented as final or held-out test performance. The plots are checked-in snapshots so they render on GitHub; the complete run files and checkpoints remain local under the ignored `runs/` directory.
+The model was evaluated on the held-out synthetic test split after checkpoint selection. Validation and test metrics are shown side by side below. The test set contains 500 images and 1,427 labeled pallet jacks. Metrics were computed with Ultralytics at 640 input size on an NVIDIA RTX 5080 Laptop GPU. The plots are checked-in snapshots so they render on GitHub; full run files and checkpoints remain local under the ignored `runs/` directory.
+
+| Split | Images | Precision | Recall | mAP50 | mAP50–95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Validation, best checkpoint at epoch 89 | 500 | 0.9313 | 0.8243 | 0.9098 | 0.7918 |
+| Held-out synthetic test | 500 | 0.9248 | 0.8087 | 0.9059 | 0.7861 |
+
+The close validation and test results are encouraging evidence that the baseline generalizes to held-out synthetic frames sampled from these scenario groups. They do not establish performance on real photos: all 5,000 frames come from the Isaac Sim data-generation process, and a labeled real-image benchmark has not yet been assembled. Treat this as an initial baseline, not a deployment claim. The held-out test results should not be used to tune the model; future model changes should be judged on a new untouched test set or an independently collected evaluation set.
 
 ### Training losses and validation metrics
 
-This training summary shows box, classification, and localization losses for train and validation data, alongside validation precision, recall, mAP50, and mAP50-95 by epoch. Loss decreasing while validation metrics improve is consistent with learning; the held-out test set is still needed for a final synthetic benchmark.
+This training summary shows box, classification, and localization losses for train and validation data, alongside validation precision, recall, mAP50, and mAP50-95 by epoch. Loss and validation metric trends help diagnose training; the held-out test results are reported separately below.
 
 ![YOLO training losses and validation metrics across epochs](docs/assets/baseline/training-results.png)
 
-### Precision-recall curve
+### Validation precision-recall curve
 
 The curve summarizes the precision/recall tradeoff as the confidence threshold varies. For a single class, the chart reports pallet-jack average precision; the displayed AP at IoU 0.50 is not the same as mAP50-95.
 
 ![Validation precision-recall curve](docs/assets/baseline/precision-recall.png)
 
-### Confusion matrix
+### Validation confusion matrix
 
 The raw matrix contains counts, while the normalized matrix expresses the counts as proportions. In an object detector, the background row/column helps show missed objects and detections without a matching labeled object. Read the axis labels as well as the cells: this plot is based on validation predictions and its normalization is performed by Ultralytics.
 
@@ -66,9 +123,28 @@ The raw matrix contains counts, while the normalized matrix expresses the counts
 
 The label montage shows the expected annotations; the prediction montage shows what the model predicted for those same validation examples. These images are a qualitative sample, not an independent accuracy measurement.
 
-| Ground-truth boxes | Model predictions |
+| Validation ground-truth boxes | Validation model predictions |
 | --- | --- |
 | ![Ground-truth boxes on validation images](docs/assets/baseline/validation-ground-truth.jpg) | ![Predicted boxes on validation images](docs/assets/baseline/validation-predictions.jpg) |
+
+### Held-out test-set results
+
+The test precision-recall curve and confusion matrices below were generated after training and checkpoint selection. The normalized matrix is useful for class-wise proportions; the raw-count matrix is included for inspection, but its object-detection background row/column should not be interpreted as a simple count of false-positive images. The montages are a small qualitative sample, not a substitute for the reported aggregate metrics.
+
+![Held-out synthetic test precision-recall curve](docs/assets/test/precision-recall.png)
+
+![Normalized held-out synthetic test confusion matrix](docs/assets/test/confusion-matrix-normalized.png)
+
+<details>
+<summary>Raw held-out synthetic test confusion matrix (counts)</summary>
+
+![Raw held-out synthetic test confusion matrix](docs/assets/test/confusion-matrix-counts.png)
+
+</details>
+
+| Test ground-truth boxes | Test model predictions |
+| --- | --- |
+| ![Ground-truth boxes on held-out test images](docs/assets/test/test-ground-truth.jpg) | ![Predicted boxes on held-out test images](docs/assets/test/test-predictions.jpg) |
 
 ## Dataset and annotation format
 
@@ -174,7 +250,17 @@ jupyter lab notebooks/01_explore_training_results.ipynb
 
 Choose the `Python (Pallet Jack Detection)` kernel in Jupyter if needed. Update `RUN_NAME` in the first code cell to inspect another experiment. Optional real-photo inference and training-launch cells are off by default and require explicit opt-in. More details are in [training setup](docs/training.md).
 
-### 6. Visualize predictions on images
+### 6. Evaluate the held-out synthetic test split
+
+Run this once the checkpoint is selected. The script uses `split: test` from the dataset YAML, records the metrics as JSON, saves plots and sample predictions, and protects existing run folders from overwrite. Use a new `--name` for a distinct evaluation run.
+
+```bash
+python scripts/evaluate_test_set.py --device 0 --name palletjack-detection-yolo26n-seed42-test-reproduction
+```
+
+Omit `--device 0` for automatic device selection, or use `--device cpu`. Results are written under `runs/detect/<name>/`. See [evaluation notes](docs/evaluation.md) for the measured baseline and interpretation.
+
+### 7. Visualize predictions on images
 
 Use this command on a single image or a folder. The source images remain unchanged; annotated copies go to the output folder. This is visual inspection only and does not compute accuracy for unlabeled photos.
 
@@ -189,9 +275,7 @@ Add photos to the local `local/real-images/` folder. It is gitignored. For confi
 
 ## Model evaluation: what is and is not measured
 
-Training curves, PR curves, confusion matrices, and the displayed image montages above come from the validation split, which is used during training and checkpoint selection. They are useful for development, but they are not a final estimate of generalization.
-
-The next evaluation stage is to run the selected checkpoint once on the untouched 500-image synthetic test split and record the checkpoint, dataset version, thresholds, and metrics. Separately, a labeled real-photo dataset is needed to compute real-image precision, recall, and mAP; unlabeled photos support visual review only. Compare synthetic and real metrics only after both sets have ground-truth boxes and are evaluated consistently. Isaac Sim integration and simulator-side performance checks come after that.
+Training curves and the first set of figures come from validation, which is used during training and checkpoint selection. The second set of figures and the test metrics come from the held-out synthetic test split. Quantitative real-photo metrics still require labeled real images; unlabeled photos support visual review only. Compare synthetic and real metrics only after both sets have ground-truth boxes and are evaluated consistently. Isaac Sim integration and simulator-side performance checks come after that.
 
 See [evaluation notes](docs/evaluation.md) and [Isaac Sim integration notes](docs/isaac-sim-integration.md) for the planned work and reporting guidance.
 
@@ -201,7 +285,7 @@ See [evaluation notes](docs/evaluation.md) and [Isaac Sim integration notes](doc
 configs/                    Training and dataset configuration
 data/raw/                   Local Isaac Sim exports (ignored)
 data/processed/             Local splits, copied images, labels (ignored)
-docs/                       Workflow documentation and README figures
+docs/                       Workflow guides and small demonstration figures/video
 local/                      Machine-local inputs and scratch data (ignored)
 models/                     Model weights (ignored)
 notebooks/                  Interactive training-results exploration
@@ -212,7 +296,7 @@ src/palletjack_detection/   Reusable validation, processing, training, and infer
 tests/                      Automated regression tests
 ```
 
-Commit source code, configuration templates, documentation, and the small baseline figures in `docs/assets/baseline/`. Do not commit the raw/processed datasets, training runs, prediction outputs, local images, virtual environment, or model checkpoints; these are excluded by `.gitignore`. The README figures are intentional lightweight snapshots of a baseline run, not the full run artifacts.
+Commit source code, configuration templates, documentation, and selected small demonstration/evaluation media in `docs/assets/`. Do not commit the raw/processed datasets, training runs, prediction outputs, local images, virtual environment, or model checkpoints; these are excluded by `.gitignore`. The SDG video is about 42 MB; include it only if its size and the repository's media-storage policy are acceptable. The checked-in images are curated examples and evaluation snapshots, not the full generated dataset or run artifacts.
 
 Run the repository test suite from the project root with:
 
@@ -224,5 +308,5 @@ python -m unittest discover -s tests -v
 
 - [Data preparation and dataset details](docs/data.md)
 - [Training configuration and Jupyter notebook](docs/training.md)
-- [Prediction visualization and evaluation plan](docs/evaluation.md)
+- [Prediction visualization and evaluation results](docs/evaluation.md)
 - [Isaac Sim integration notes](docs/isaac-sim-integration.md)

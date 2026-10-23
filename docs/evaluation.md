@@ -21,4 +21,25 @@ Use images with and without pallet jacks, and review missed detections and false
 
 ## Held-out synthetic test set
 
-The training process uses the validation split to monitor training and select `best.pt`; it does not report final held-out test metrics. The test split should be evaluated separately after a checkpoint is selected. Test-set evaluation should not be used to tune confidence thresholds or make repeated model-selection decisions.
+The training process uses validation data to monitor training and select `best.pt`. The separate test-only command evaluates the selected checkpoint using the `test` path in `data/processed/dataset.yaml`:
+
+```bash
+python scripts/evaluate_test_set.py --device 0 --name palletjack-detection-yolo26n-seed42-test-reproduction
+```
+
+The command records the checkpoint and settings in `test_metrics.json`, creates PR/confusion plots and sample predictions, and writes output under `runs/detect/<name>/`. Choose a new name for each run; existing output folders are not overwritten. Leave out `--device 0` for automatic selection or pass `cpu` to force CPU evaluation.
+
+### Current synthetic baseline
+
+The selected YOLO26n checkpoint (`best.pt`, epoch 89 by validation mAP50-95) was evaluated at input size 640, batch size 16, on CUDA device 0 (NVIDIA GeForce RTX 5080 Laptop GPU).
+
+| Split | Images | Precision | Recall | mAP50 | mAP50–95 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Validation | 500 | 0.9313 | 0.8243 | 0.9098 | 0.7918 |
+| Held-out test | 500 | 0.9248 | 0.8087 | 0.9059 | 0.7861 |
+
+The test split has 200 `distractors_additional`, 200 `distractors_warehouse`, and 100 `no_distractors` images, with 1,427 labeled pallet-jack instances total. The similar validation and test metrics support the limited conclusion that this checkpoint performs consistently on held-out synthetic frames from the same data-generation setup. They do not measure transfer to real photographs, establish robustness to real lighting/cameras/occlusion, or prove deployment readiness.
+
+This test set is now a reported baseline and should not be repeatedly consulted to tune confidence thresholds or choose among many checkpoints. Use a new untouched test set or independently labeled real-image benchmark for subsequent model changes. Keep real-image results separate from synthetic results and report dataset source, labels, checkpoint, settings, and metrics together.
+
+Tracked visualization snapshots are in `docs/assets/test/`; full evaluation outputs remain under ignored `runs/`.
