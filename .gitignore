@@ -17,6 +17,14 @@ venv/
 # Keep placeholders so the directory layout is visible in a fresh clone
 !/data/raw/.gitkeep
 !/data/processed/.gitkeep
+!/data/raw/experiment-01/
+!/data/raw/experiment-01/.gitkeep
+!/data/raw/experiment-02/
+!/data/raw/experiment-02/.gitkeep
+!/data/processed/experiment-01/
+!/data/processed/experiment-01/.gitkeep
+!/data/processed/experiment-02/
+!/data/processed/experiment-02/.gitkeep
 !/runs/.gitkeep
 !/models/.gitkeep
 

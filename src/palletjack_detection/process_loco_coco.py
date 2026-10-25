@@ -10,9 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_RAW_ROOT = PROJECT_ROOT / "data" / "raw" / "real-pallet-jack-data"
-DEFAULT_OUTPUT_ROOT = PROJECT_ROOT / "data" / "processed" / "real-pallet-jack-data"
+from palletjack_detection.data_paths import DEFAULT_REAL_PROCESSED_ROOT, DEFAULT_REAL_RAW_ROOT
+
+DEFAULT_RAW_ROOT = DEFAULT_REAL_RAW_ROOT
+DEFAULT_OUTPUT_ROOT = DEFAULT_REAL_PROCESSED_ROOT
 SOURCE_CATEGORY_NAME = "pallet_truck"
 TARGET_CATEGORY_ID = 1
 TARGET_CATEGORY_NAME = "pallet-jack"

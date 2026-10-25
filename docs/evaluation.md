@@ -16,7 +16,7 @@ The trained `best.pt` checkpoint was evaluated on the LOCO images with ground-tr
 python scripts/convert_coco_to_yolo.py
 python scripts/evaluate_test_set.py \
   --model runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt \
-  --dataset data/processed/real-pallet-jack-data/dataset.yaml \
+  --dataset data/processed/experiment-01/real-pallet-jack-data/dataset.yaml \
   --name palletjack-detection-yolo26n-seed42-real-loco-subset1 \
   --device 0 --imgsz 640 --batch 16 --workers 4
 ```
@@ -33,7 +33,7 @@ Selected small snapshots are checked into `docs/assets/real-loco/`; complete run
 
 #### Inspect predictions on real images
 
-The LOCO subset-1 images and COCO annotations are staged locally under `data/raw/real-pallet-jack-data/`. The data source, license, and inventory are documented in [`docs/data.md`](data.md). The JSON covers 1,075 images; 65 additional JPGs lack COCO image records and should not be scored as negative examples until checked. The filtered COCO labels are retained as source ground truth, and a separate COCO-to-YOLO adapter makes them readable by the existing Ultralytics evaluator. The set has been evaluated separately from synthetic results.
+The LOCO subset-1 images and COCO annotations are staged locally under `data/raw/experiment-01/real-pallet-jack-data/`. The data source, license, and inventory are documented in [`docs/data.md`](data.md). The JSON covers 1,075 images; 65 additional JPGs lack COCO image records and should not be scored as negative examples until checked. The filtered COCO labels are retained as source ground truth, and a separate COCO-to-YOLO adapter makes them readable by the existing Ultralytics evaluator. The set has been evaluated separately from synthetic results.
 
 Use the trained checkpoint to produce annotated copies of one real photograph or every supported image in a folder. Images do not need labels; this is for visual inspection and does not calculate accuracy metrics.
 
@@ -50,7 +50,7 @@ Use images with and without pallet jacks, and review missed detections and false
 
 ### Held-out synthetic test set
 
-The training process uses validation data to monitor training and select `best.pt`. The separate test-only command evaluates the selected checkpoint using the `test` path in `data/processed/dataset.yaml`:
+The training process uses validation data to monitor training and select `best.pt`. The separate test-only command evaluates the selected checkpoint using the `test` path in `data/processed/experiment-01/dataset.yaml` by default. Use `--dataset data/processed/experiment-02/dataset.yaml` for Experiment 2:
 
 ```bash
 python scripts/evaluate_test_set.py --device 0 --name palletjack-detection-yolo26n-seed42-test-reproduction

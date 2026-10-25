@@ -72,7 +72,7 @@ GitHub README pages do not play repository-relative video files directly, so thi
 
 ## From generated frames to a detector
 
-The data flow preserves both the source annotations and the model-ready annotations. Raw Isaac Sim outputs live in `data/raw/` and are not edited by preparation steps. The validator checks image/annotation pairs and box geometry. A seeded split step assigns every frame to train, validation, or test; the preparation step then copies selected RGB images and original KITTI labels into `data/processed/`, converts the boxes to normalized YOLO text labels, and writes the dataset YAML. This separation makes the raw export auditable and allows the processed dataset to be regenerated.
+The data flow preserves both the source annotations and the model-ready annotations. Each experiment has its own raw and processed roots, such as `data/raw/experiment-01/` and `data/processed/experiment-01/`. Raw Isaac Sim outputs are not edited by preparation steps. The validator checks image/annotation pairs and box geometry. A seeded split step assigns every frame to train, validation, or test; the preparation step then copies selected RGB images and original KITTI labels into the matching processed experiment folder, converts the boxes to normalized YOLO text labels, and writes that experiment's dataset YAML.
 
 The pretrained YOLO26n detector is fine-tuned outside the simulator on the train split. Validation data guides checkpoint selection. The selected checkpoint is then evaluated on the held-out synthetic test split. LOCO subset-1 has been filtered to the pallet-truck class, mapped to `pallet-jack`, and converted from COCO to YOLO labels solely to use Ultralytics validation. Its real-image evaluation is reported separately from the synthetic held-out test. Dataset provenance and counts are documented in [`docs/data.md`](docs/data.md).
 
@@ -195,7 +195,7 @@ The split is randomized reproducibly within each scenario. Since these frames re
 ### Requirements
 
 - Git and Python 3.10 or newer.
-- The raw Isaac Sim export in `data/raw/` to run the data pipeline.
+- The raw Isaac Sim export in `data/raw/experiment-01/` to run the Experiment 1 pipeline.
 - A PyTorch build matching your hardware. For CUDA training, use the current command from the [official PyTorch install selector](https://pytorch.org/get-started/locally/); CUDA-enabled PyTorch bundles the CUDA runtime components it needs, while the installed NVIDIA driver must support it.
 - Project packages listed in `requirements.txt` (Pillow, PyYAML, Ultralytics, Matplotlib, JupyterLab, and IPython kernel support).
 
@@ -216,7 +216,7 @@ Check that the active interpreter is the virtual environment's Python with `whic
 The validator checks the raw RGB/annotation pairs, image readability, class names, annotation fields, and 2D box geometry. It is read-only; empty annotations are allowed as negative frames.
 
 ```bash
-python scripts/validate_dataset.py --root data/raw \
+python scripts/validate_dataset.py --root data/raw/experiment-01 \
   --scenario distractors_additional \
   --scenario distractors_warehouse \
   --scenario no_distractors
@@ -239,13 +239,52 @@ Defaults are 80/10/10 and seed 42. The scenario options select the Isaac Sim fol
 
 ### 3. Process raw data into the YOLO dataset
 
-Run this after creating the manifests. It copies only the selected RGB images and KITTI labels, converts those copied labels to YOLO format, and writes `data/processed/dataset.yaml`.
+Run this after creating the manifests. It copies only the selected RGB images and KITTI labels, converts those copied labels to YOLO format, and writes `data/processed/experiment-01/dataset.yaml`.
 
 ```bash
 python scripts/process_raw_data.py
 ```
 
-The processing step preserves raw inputs and uses the scenario names recorded in the split manifests, so the LOCO folder is not treated as an Isaac Sim scenario. It keeps the original KITTI labels under `data/processed/kitti_labels/`, writes images under `data/processed/images/`, and YOLO annotations under `data/processed/labels/`. For a deliberate rerun over generated outputs, use `--overwrite`. See [data workflow](docs/data.md) for the full layout and options.
+The processing step preserves raw inputs and uses the scenario names recorded in the split manifests, so the LOCO folder is not treated as an Isaac Sim scenario. Experiment 1 outputs are under `data/processed/experiment-01/`: original KITTI labels in `kitti_labels/`, images in `images/`, and YOLO annotations in `labels/`. For a deliberate rerun over generated outputs, use `--overwrite`. See [data workflow](docs/data.md) for the full layout and options.
+
+### Use Experiment 2 data
+
+The Isaac Sim launcher writes new exports under `data/raw/experiment-02/`, keeping Experiment 1 intact. After generation, run the same preparation stages with Experiment 2 paths:
+
+```bash
+python scripts/validate_dataset.py --root data/raw/experiment-02 \
+  --scenario distractors_additional \
+  --scenario distractors_warehouse \
+  --scenario no_distractors
+python scripts/create_splits.py \
+  --root data/raw/experiment-02 \
+  --output-dir data/processed/experiment-02/splits \
+  --processed-root data/processed/experiment-02 \
+  --scenario distractors_additional \
+  --scenario distractors_warehouse \
+  --scenario no_distractors
+python scripts/process_raw_data.py \
+  --root data/raw/experiment-02 \
+  --manifest-dir data/processed/experiment-02/splits \
+  --output-dir data/processed/experiment-02
+```
+
+Train it with `configs/train_yolo_experiment-02.yaml` after processing finishes. Dataset arguments remain explicit, and the training config points at the matching Experiment 2 dataset YAML.
+
+If you also want a separate Experiment 2 real-image evaluation, reuse the LOCO raw source from Experiment 1 and write its processed adapter into Experiment 2:
+
+```bash
+python scripts/process_loco_coco.py \
+  --root data/raw/experiment-01/real-pallet-jack-data \
+  --output-dir data/processed/experiment-02/real-pallet-jack-data
+python scripts/convert_coco_to_yolo.py \
+  --dataset-root data/processed/experiment-02/real-pallet-jack-data
+python scripts/evaluate_test_set.py \
+  --model runs/detect/experiment-02/palletjack-detection-yolo26n-seed42/weights/best.pt \
+  --dataset data/processed/experiment-02/real-pallet-jack-data/dataset.yaml \
+  --project runs/detect/experiment-02 \
+  --name palletjack-detection-yolo26n-seed42-real-loco-subset1
+```
 
 ### Explore data preparation interactively
 
@@ -298,7 +337,7 @@ The filtered COCO annotations remain the source of truth. This adapter writes no
 python scripts/convert_coco_to_yolo.py
 python scripts/evaluate_test_set.py \
   --model runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt \
-  --dataset data/processed/real-pallet-jack-data/dataset.yaml \
+  --dataset data/processed/experiment-01/real-pallet-jack-data/dataset.yaml \
   --name palletjack-detection-yolo26n-seed42-real-loco-subset1 \
   --device 0
 ```
@@ -328,8 +367,10 @@ See [evaluation notes](docs/evaluation.md) and [Isaac Sim integration notes](doc
 
 ```text
 configs/                    Training and dataset configuration
-data/raw/                   Local Isaac Sim exports (ignored)
-data/processed/             Local splits, copied images, labels (ignored)
+data/raw/experiment-01/     Experiment 1 source data (ignored)
+data/raw/experiment-02/     Experiment 2 source data (ignored)
+data/processed/experiment-01/  Experiment 1 splits and prepared datasets (ignored)
+data/processed/experiment-02/  Experiment 2 splits and prepared datasets (ignored)
 docs/                       Workflow guides and small demonstration figures/video
 local/                      Machine-local inputs and scratch data (ignored)
 models/                     Model weights (ignored)

@@ -4,7 +4,16 @@
 
 The completed first model run is **Experiment 1 (`EXP-001`)**. It fine-tuned `yolo26n.pt` on the 4,000-image synthetic training split using seed 42, 100 epochs, 640 input size, and batch size 16. The selected checkpoint is `runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt` (best validation mAP50–95 at epoch 89). The exact config and run artifacts are listed in the [Experiment 1 record](experiments/experiment-01.md). The LOCO images were not used for training.
 
-This stage fine-tunes a pretrained Ultralytics YOLO detector on the prepared synthetic dataset. It assumes the data-preparation workflow has already created `data/processed/dataset.yaml` and the `images/train`, `images/val`, and `labels/` directories. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
+This stage fine-tunes a pretrained Ultralytics YOLO detector on a prepared synthetic dataset. The default Experiment 1 configuration reads `data/processed/experiment-01/dataset.yaml` and its `images/train`, `images/val`, and `labels/` directories. Experiment 2 has its own `configs/train_yolo_experiment-02.yaml`, which points to `data/processed/experiment-02/dataset.yaml`. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
+
+Once Experiment 2 data has been prepared, validate and launch it with the dedicated configuration:
+
+```bash
+python scripts/train_yolo.py --config configs/train_yolo_experiment-02.yaml --validate-only
+python scripts/train_yolo.py --config configs/train_yolo_experiment-02.yaml
+```
+
+Its outputs go under `runs/detect/experiment-02/`, separate from Experiment 1's run directory.
 
 ## Training environment
 

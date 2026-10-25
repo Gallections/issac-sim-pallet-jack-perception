@@ -1,0 +1,11 @@
+# Experiment 2 fine-tuning settings. The dataset YAML is produced by the data-preparation workflow.
+model: yolo26n.pt
+dataset_yaml: data/processed/experiment-02/dataset.yaml
+epochs: 100
+imgsz: 640
+batch: 16
+device: null
+seed: 42
+workers: 4
+project: runs/detect/experiment-02
+name: palletjack-detection-yolo26n-seed42

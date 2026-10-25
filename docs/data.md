@@ -2,7 +2,21 @@
 
 The current Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). This guide explains how those raw sources map to the processed model inputs.
 
-This document records the current local Isaac Sim synthetic-data export and the path into object-detection training. The raw export is kept as source data; processing scripts write derived files under `data/processed/` and leave the raw files unchanged.
+This document records the current Isaac Sim synthetic-data export and the path into object-detection training. Synthetic inputs and experiment-specific derived outputs are isolated by experiment: Experiment 1 uses `data/raw/experiment-01/` and `data/processed/experiment-01/`; Experiment 2 uses the matching `experiment-02` folders. The LOCO source images are retained once under Experiment 1 because they were first used for its external evaluation; they can be reused as an evaluation set for later experiments without duplicating the large raw image collection.
+
+## Experiment-scoped layout
+
+```text
+data/
+├── raw/
+│   ├── experiment-01/       # Original synthetic exports and LOCO source files used for Experiment 1
+│   └── experiment-02/       # New Isaac Sim exports for Experiment 2
+└── processed/
+    ├── experiment-01/       # Experiment 1 manifests, synthetic dataset, and real-evaluation adapters
+    └── experiment-02/       # Experiment 2 manifests and derived datasets
+```
+
+The validation, split, processing, training, and evaluation defaults continue to target Experiment 1. To work on another experiment, pass its raw and processed roots to the preparation commands and select its training config. This keeps existing baseline commands reproducible and prevents a new experiment from replacing prior data. When reusing LOCO for Experiment 2, read the source from Experiment 1 and write a separate derived copy into Experiment 2's processed folder.
 
 ## Current synthetic source dataset inventory
 
@@ -14,7 +28,7 @@ The local export contains three scenario groups:
 | `distractors_warehouse` | 2,000 | Pallet-jack scenes with warehouse distractors. |
 | `distractors_additional` | 2,000 | Pallet-jack scenes with additional distractors. |
 
-Each group is under `data/raw/<group>/Camera/` and contains these numbered, zero-based output folders:
+Each Experiment 1 group is under `data/raw/experiment-01/<group>/Camera/` and contains these numbered, zero-based output folders:
 
 - `rgb/` — color images used as the detector input.
 - `object_detection/` — KITTI-style text annotations converted to YOLO targets during processing.
@@ -39,14 +53,14 @@ It has the standard KITTI object-label field ordering: class, truncation, occlus
 
 ## Git and local storage
 
-Raw and processed data, training runs, and model weights are intended to stay out of Git. The root `.gitignore` currently excludes `data/raw/`, `data/processed/`, `runs/`, and `models/`. Keep small documentation and code in the repository, not copies of the generated dataset.
+Raw and processed data, training runs, and model weights are intended to stay out of Git. The root `.gitignore` excludes experiment contents while retaining `.gitkeep` placeholders for the experiment directories. Keep small documentation and code in the repository, not copies of the generated dataset.
 
 ## Read-only validator
 
 Install dependencies with `python -m pip install -r requirements.txt`, then run the validator from the repository root:
 
 ```powershell
-python scripts/validate_dataset.py --root data/raw `
+python scripts/validate_dataset.py --root data/raw/experiment-01 `
   --scenario distractors_additional `
   --scenario distractors_warehouse `
   --scenario no_distractors
@@ -98,7 +112,7 @@ python scripts/create_splits.py \
   --scenario no_distractors
 ```
 
-`scripts/create_splits.py` validates the selected scenario folders and writes `train.csv`, `validation.csv`, and `test.csv` under `data/processed/splits/`. The explicit selection keeps `real-pallet-jack-data` from being mistaken for an Isaac Sim scenario. It assigns each frame once, stratifies within scenario, and records raw source paths plus intended paths for processed RGB, copied KITTI labels, and converted YOLO labels. It does not copy files or convert annotations. With the same source and seed, it reproduces the same assignments.
+`scripts/create_splits.py` validates the selected scenario folders and writes `train.csv`, `validation.csv`, and `test.csv` under `data/processed/experiment-01/splits/` by default. The explicit selection keeps `real-pallet-jack-data` from being mistaken for an Isaac Sim scenario. It assigns each frame once, stratifies within scenario, and records raw source paths plus intended paths for processed RGB, copied KITTI labels, and converted YOLO labels. It does not copy files or convert annotations. With the same source and seed, it reproduces the same assignments.
 
 For the current data, the default 80/10/10 split still gives 4,000 training, 500 validation, and 500 test frames. Since manifests already exist in this workspace, regenerate them with `--overwrite` after changing the split workflow:
 
@@ -119,11 +133,11 @@ python scripts/process_raw_data.py
 
 The processor reads the manifests, validates only the scenario folders named by those manifests, and copies only these files:
 
-- RGB images to `data/processed/images/{train,val,test}/<scenario>/`.
-- Original KITTI labels to `data/processed/kitti_labels/{train,val,test}/<scenario>/`.
-- Converted YOLO labels to `data/processed/labels/{train,val,test}/<scenario>/`.
+- RGB images to `data/processed/experiment-01/images/{train,val,test}/<scenario>/`.
+- Original KITTI labels to `data/processed/experiment-01/kitti_labels/{train,val,test}/<scenario>/`.
+- Converted YOLO labels to `data/processed/experiment-01/labels/{train,val,test}/<scenario>/`.
 
-It calls `convert_kitti_annotation_file_to_yolo` from `src/palletjack_detection/kitti_to_yolo.py` for each copied image/label pair and writes `data/processed/dataset.yaml`. Depth, semantic, and instance-segmentation data remain only in `data/raw/`. The RGB copy requires additional disk space approximately equal to the selected images (about 3.7 GB for this export).
+It calls `convert_kitti_annotation_file_to_yolo` from `src/palletjack_detection/kitti_to_yolo.py` for each copied image/label pair and writes `data/processed/experiment-01/dataset.yaml`. Depth, semantic, and instance-segmentation data remain only in the matching raw experiment folder. The RGB copy requires additional disk space approximately equal to the selected images (about 3.7 GB for this export).
 
 The YOLO converter module contains annotation conversion only. Its standalone command converts one label file:
 
@@ -135,6 +149,8 @@ If raw-data processing stops partway through, rerun `scripts/process_raw_data.py
 
 Use `--seed`, `--root`, `--output-dir`, and `--processed-root` to change the split seed, source root, manifest location, or recorded processed paths. The proportions can be changed with `--train-ratio`, `--validation-ratio`, and `--test-ratio`; they must be positive and sum to 1.0. Both the processor and the single-file converter accept `--exclusive-max-coordinates` if the writer convention is confirmed to use exclusive upper edges. The current default treats maximum coordinates as inclusive pixel indices; this remains a working assumption pending confirmation.
 
+For Experiment 2, pass `data/raw/experiment-02` as the source root, `data/processed/experiment-02/splits` as the manifest folder, and `data/processed/experiment-02` as the processed root. The [main README](../README.md#use-experiment-2-data) gives the full commands. Once those outputs exist, use `configs/train_yolo_experiment-02.yaml` for training.
+
 LOCO real photos are prepared and evaluated through a separate COCO-to-YOLO path; they are intentionally excluded from these synthetic manifests.
 
 Keep the scenario identity available in manifests or split metadata so evaluation can report results by condition. Split by independent scene/capture groups if that information is available; avoid assigning near-duplicate frames from the same capture across training and evaluation splits.
@@ -145,13 +161,13 @@ Keep the scenario identity available in manifests or split metadata so evaluatio
 
 The project uses the public **Logistics Objects in Context (LOCO)** dataset from the Technical University of Munich's Materials Handling, Material Flow, Logistics group. LOCO contains real logistics-scene images and manually annotated bounding boxes for forklifts, pallet trucks, pallets, small load carriers, and stillages. The official [LOCO repository](https://github.com/tum-fml/loco) reports 37,988 images across five logistics environments, of which 5,593 are annotated, and publishes the dataset under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Cite the dataset as Mayershofer, Holm, Molter, and Fottner, “LOCO: Logistics Objects in Context,” ICMLA 2020; see the [paper](https://mediatum.ub.tum.de/doc/1578845/document.pdf) and [repository](https://github.com/tum-fml/loco).
 
-The local, Git-ignored copy is in `data/raw/real-pallet-jack-data/`. It contains only `subset-1` images plus `loco-all-v1.json`. The official repository identifies subset 1 as a validation subset and provides COCO annotations in `rgb/loco-sub1-v1-val.json` as well as a full annotation file. The local JSON currently retains only records whose filenames match subset 1; it has 1,075 image records and 24,763 annotations across the original five classes, including 594 `pallet_truck` instances across 403 images. Of the 1,075 image records, 672 have no `pallet_truck` annotation and should remain as negative examples for this one-class task after other-class boxes are removed. The folder has 1,140 JPGs, so 65 local images have no image record in this JSON. Keep those source files, but do not score them as negatives until ground truth is confirmed for them.
+The local, Git-ignored copy is in `data/raw/experiment-01/real-pallet-jack-data/`. It contains only `subset-1` images plus `loco-all-v1.json`. The official repository identifies subset 1 as a validation subset and provides COCO annotations in `rgb/loco-sub1-v1-val.json` as well as a full annotation file. The local JSON currently retains only records whose filenames match subset 1; it has 1,075 image records and 24,763 annotations across the original five classes, including 594 `pallet_truck` instances across 403 images. Of the 1,075 image records, 672 have no `pallet_truck` annotation and should remain as negative examples for this one-class task after other-class boxes are removed. The folder has 1,140 JPGs, so 65 local images have no image record in this JSON. Keep those source files, but do not score them as negatives until ground truth is confirmed for them.
 
 For this project's one-class detector, `pallet_truck` is the target class and is renamed `pallet-jack` in the derived dataset. Keep all source images, remove boxes for other classes, and retain empty annotation lists for the 672 JSON-listed images with no pallet-truck box. The 65 JPGs missing from the COCO `images` array need separate ground-truth review before they can be included in quantitative evaluation. Keep this real-image evaluation data separate from synthetic training and evaluation, and report its metrics separately. The filtered real set has been converted to YOLO labels for evaluation and evaluated separately; see [real-image evaluation](evaluation.md). The COCO annotations remain preserved as the source-of-truth labels.
 
 ## COCO-to-YOLO adapter for real-image evaluation
 
-The filtered LOCO COCO file is retained at `data/processed/real-pallet-jack-data/annotations.json`. Ultralytics detection validation expects normalized YOLO text labels, so the project converts the COCO `bbox` values (`x`, `y`, `width`, `height`) using each listed image's actual dimensions. The resulting line is `class_id center_x center_y width height`; the one class, `pallet-jack`, maps to ID `0`. Every COCO image record gets a label file, including an empty file for each of the 672 negative images. This adapter leaves the COCO JSON and source images unchanged.
+The filtered LOCO COCO file for Experiment 1 is retained at `data/processed/experiment-01/real-pallet-jack-data/annotations.json`. Ultralytics detection validation expects normalized YOLO text labels, so the project converts the COCO `bbox` values (`x`, `y`, `width`, `height`) using each listed image's actual dimensions. The resulting line is `class_id center_x center_y width height`; the one class, `pallet-jack`, maps to ID `0`. Every COCO image record gets a label file, including an empty file for each of the 672 negative images. This adapter leaves the COCO JSON and source images unchanged.
 
 Run from the repository root after processing the filtered LOCO data:
 
@@ -159,7 +175,7 @@ Run from the repository root after processing the filtered LOCO data:
 python scripts/convert_coco_to_yolo.py
 ```
 
-The command writes `labels/`, `dataset.yaml`, and `conversion_report.json` below `data/processed/real-pallet-jack-data/`. Existing generated conversion outputs are protected; use `--overwrite` only to regenerate those outputs. The YAML declares all images as the `test` split, with no train or validation split, to avoid using this set to train the synthetic baseline. The converter validates box extents against actual image dimensions and rejects path escapes or malformed boxes.
+The command writes `labels/`, `dataset.yaml`, and `conversion_report.json` below `data/processed/experiment-01/real-pallet-jack-data/`. Existing generated conversion outputs are protected; use `--overwrite` only to regenerate those outputs. The YAML declares all images as the `test` split, with no train or validation split, to avoid using this set to train the synthetic baseline. The converter validates box extents against actual image dimensions and rejects path escapes or malformed boxes.
 
 The current conversion report records 1,075 images, 594 pallet-jack boxes, 403 positive images, and 672 negative images. The additional 65 JPGs missing from the COCO image list remain excluded. Conversion to YOLO is an evaluation-format adapter, not a replacement for COCO ground truth.
 

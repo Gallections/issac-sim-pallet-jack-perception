@@ -11,10 +11,12 @@ from typing import Any
 
 import yaml
 
+from palletjack_detection.data_paths import DEFAULT_PROCESSED_ROOT, PROJECT_ROOT as DATA_PROJECT_ROOT
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+PROJECT_ROOT = DATA_PROJECT_ROOT
 DEFAULT_CHECKPOINT = Path("runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt")
-DEFAULT_DATASET_YAML = Path("data/processed/dataset.yaml")
+DEFAULT_DATASET_YAML = DEFAULT_PROCESSED_ROOT / "dataset.yaml"
 DEFAULT_RUN_NAME = "palletjack-detection-yolo26n-seed42-test"
 
 

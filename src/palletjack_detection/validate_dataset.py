@@ -10,10 +10,13 @@ from collections.abc import Sequence
 
 from PIL import Image, UnidentifiedImageError
 
+from palletjack_detection.data_paths import DEFAULT_RAW_ROOT
+
 
 IMAGE_EXTENSIONS = {".bmp", ".jpeg", ".jpg", ".png", ".tif", ".tiff", ".webp"}
 CLASS_NAMES = {"palletjack"}
 KITTI_FIELD_COUNT = 15
+DEFAULT_DATASET_ROOT = DEFAULT_RAW_ROOT
 
 
 @dataclass
@@ -204,7 +207,10 @@ def validate_kitti_object_detection_export(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate an Isaac Sim KITTI-style object-detection export.")
-    parser.add_argument("--root", type=Path, default=Path("data/raw"), help="dataset root (default: data/raw)")
+    parser.add_argument(
+        "--root", type=Path, default=DEFAULT_DATASET_ROOT,
+        help="experiment raw-data root (default: data/raw/experiment-01)",
+    )
     parser.add_argument(
         "--scenario",
         action="append",

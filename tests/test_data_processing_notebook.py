@@ -84,6 +84,12 @@ class DataProcessingNotebookTests(unittest.TestCase):
         self.assertIn("convert_coco_dataset_to_yolo", guarded_calls["RUN_REAL_YOLO_CONVERSION"])
         self.assertIn("RUN_REAL_YOLO_CONVERSION = False", self.code)
 
+    def test_synthetic_paths_are_selected_by_experiment_and_loco_source_is_shared(self) -> None:
+        self.assertIn('EXPERIMENT_ID = "experiment-01"', self.code)
+        self.assertIn('"raw" / EXPERIMENT_ID', self.code)
+        self.assertIn('"processed" / EXPERIMENT_ID', self.code)
+        self.assertIn('"raw" / "experiment-01" / "real-pallet-jack-data"', self.code)
+
 
 if __name__ == "__main__":
     unittest.main()

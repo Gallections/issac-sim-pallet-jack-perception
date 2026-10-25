@@ -12,20 +12,20 @@ The existing raw-data and run-folder names are retained for traceability. This d
 
 ### Isaac Sim source data
 
-Raw exports are under `data/raw/`:
+Raw exports are under `data/raw/experiment-01/`:
 
 | Raw export folder | Frames | Condition |
 |---|---:|---|
-| `data/raw/distractors_warehouse/` | 2,000 | Warehouse props |
-| `data/raw/distractors_additional/` | 2,000 | Additional asset-group props |
-| `data/raw/no_distractors/` | 1,000 | No added distractor group |
+| `data/raw/experiment-01/distractors_warehouse/` | 2,000 | Warehouse props |
+| `data/raw/experiment-01/distractors_additional/` | 2,000 | Additional asset-group props |
+| `data/raw/experiment-01/no_distractors/` | 1,000 | No added distractor group |
 | **Total** | **5,000** | Three conditions, independently randomized frames |
 
-Each source condition includes RGB, KITTI-style `object_detection`, depth, instance segmentation, semantic, and semantic-segmentation exports. The Experiment 1 detector uses RGB plus 2D object-detection boxes. Source exports and metadata are preserved; preparation does not edit `data/raw/`. Generation implementation and settings are in [`simulation/README.md`](../../simulation/README.md) and [`simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py`](../../simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py).
+Each source condition includes RGB, KITTI-style `object_detection`, depth, instance segmentation, semantic, and semantic-segmentation exports. The Experiment 1 detector uses RGB plus 2D object-detection boxes. Source exports and metadata are preserved; preparation does not edit `data/raw/experiment-01/`. Generation implementation and settings are in [`simulation/README.md`](../../simulation/README.md) and [`simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py`](../../simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py).
 
 ### Processed synthetic dataset
 
-The generated split manifests are under `data/processed/splits/`. The processed model dataset is under `data/processed/`, with the original KITTI labels retained alongside converted YOLO labels:
+The generated split manifests are under `data/processed/experiment-01/splits/`. The processed model dataset is under `data/processed/experiment-01/`, with the original KITTI labels retained alongside converted YOLO labels:
 
 | Split | Images | Use |
 |---|---:|---|

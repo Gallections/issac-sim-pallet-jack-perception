@@ -11,7 +11,7 @@ for %%I in ("%SCRIPT_DIR%..\..") do set "REPO_ROOT=%%~fI"
 
 set "SCRIPT_PATH=%SCRIPT_DIR%palletjack_sdg\standalone_palletjack_sdg.py"
 
-REM Keep this dataset separate from the existing Experiment 1 data in data\raw.
+REM Keep Experiment 2 exports separate from the existing Experiment 1 data.
 set "OUTPUT_ROOT=%REPO_ROOT%\data\raw\experiment-02"
 set "OUTPUT_WAREHOUSE=%OUTPUT_ROOT%\distractors_warehouse"
 set "OUTPUT_ADDITIONAL=%OUTPUT_ROOT%\distractors_additional"

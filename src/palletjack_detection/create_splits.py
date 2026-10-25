@@ -16,6 +16,7 @@ from palletjack_detection.validate_dataset import (
     KittiExportValidationError,
     validate_kitti_object_detection_export,
 )
+from palletjack_detection.data_paths import DEFAULT_PROCESSED_ROOT, DEFAULT_RAW_ROOT, DEFAULT_SPLITS_ROOT
 
 SPLIT_NAMES = ("train", "validation", "test")
 YOLO_SPLIT_NAMES = {"train": "train", "validation": "val", "test": "test"}
@@ -185,9 +186,18 @@ def create_stratified_split_manifests(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Create deterministic train/validation/test split manifests.")
-    parser.add_argument("--root", type=Path, default=Path("data/raw"), help="source dataset root")
-    parser.add_argument("--output-dir", type=Path, default=Path("data/processed/splits"), help="manifest directory")
-    parser.add_argument("--processed-root", type=Path, default=Path("data/processed"), help="future processed-data root")
+    parser.add_argument(
+        "--root", type=Path, default=DEFAULT_RAW_ROOT,
+        help="experiment raw-data root (default: data/raw/experiment-01)",
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=DEFAULT_SPLITS_ROOT,
+        help="manifest directory (default: data/processed/experiment-01/splits)",
+    )
+    parser.add_argument(
+        "--processed-root", type=Path, default=DEFAULT_PROCESSED_ROOT,
+        help="experiment processed-data root (default: data/processed/experiment-01)",
+    )
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument(
         "--scenario",
