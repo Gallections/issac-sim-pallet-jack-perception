@@ -11,6 +11,7 @@ venv/
 /data/processed/**
 /runs/**
 /models/**
+/simulation/assets/pallet_jacks/experiment-02/*.usdz
 /yolo26n.pt
 # I used yolo26n.pt as the base model for fine tuning.
 

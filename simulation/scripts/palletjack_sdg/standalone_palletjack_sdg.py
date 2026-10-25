@@ -24,6 +24,7 @@
 from omni.isaac.kit import SimulationApp
 import os
 import argparse
+from palletjack_assets import resolve_local_palletjack_usdz_paths
 
 parser = argparse.ArgumentParser("Dataset generator")
 parser.add_argument("--headless", type=bool, default=False, help="Launch script headless, default is False")
@@ -36,6 +37,12 @@ parser.add_argument("--data_dir", type=str, default=os.getcwd() + "/_palletjack_
                     help="Location where data will be output")
 
 args, unknown_args = parser.parse_known_args()
+
+# Check local Experiment 2 assets before launching Isaac Sim, and resolve from this
+# script so generation is independent of the shell's current working directory.
+LOCAL_PALLETJACKS = [
+    str(path) for path in resolve_local_palletjack_usdz_paths(__file__)
+]
 
 # This is the config used to launch simulation. 
 CONFIG = {"renderer": "RayTracedLighting", "headless": args.headless, 
@@ -66,7 +73,6 @@ rep.settings.carb_settings("/omni/replicator/RTSubframes", 4)
 PALLETJACKS = ["http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/DigitalTwin/Assets/Warehouse/Equipment/Pallet_Trucks/Scale_A/PalletTruckScale_A01_PR_NVD_01.usd",
             "http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/DigitalTwin/Assets/Warehouse/Equipment/Pallet_Trucks/Heavy_Duty_A/HeavyDutyPalletTruck_A01_PR_NVD_01.usd",
             "http://omniverse-content-production.s3-us-west-2.amazonaws.com/Assets/DigitalTwin/Assets/Warehouse/Equipment/Pallet_Trucks/Low_Profile_A/LowProfilePalletTruck_A01_PR_NVD_01.usd"]
-
 
 # The warehouse distractors which will be added to the scene and randomized
 DISTRACTORS_WAREHOUSE = 2 * ["/Isaac/Environments/Simple_Warehouse/Props/S_TrafficCone.usd",
@@ -237,9 +243,23 @@ def full_textures_list():
 
 
 def add_palletjacks():
-    rep_obj_list = [rep.create.from_usd(palletjack_path, semantics=[("class", "palletjack")], count=2) for palletjack_path in PALLETJACKS]
-    rep_palletjack_group = rep.create.group(rep_obj_list)
-    return rep_palletjack_group
+    original_palletjack_objects = [
+        rep.create.from_usd(path, semantics=[("class", "palletjack")], count=2)
+        for path in PALLETJACKS
+    ]
+    local_original_material_objects = [
+        rep.create.from_usd(path, semantics=[("class", "palletjack")], count=1)
+        for path in LOCAL_PALLETJACKS
+    ]
+    local_randomized_material_objects = [
+        rep.create.from_usd(path, semantics=[("class", "palletjack")], count=1)
+        for path in LOCAL_PALLETJACKS
+    ]
+    return (
+        rep.create.group(original_palletjack_objects),
+        rep.create.group(local_original_material_objects),
+        rep.create.group(local_randomized_material_objects),
+    )
 
 
 def add_distractors(distractor_type="warehouse"):
@@ -280,7 +300,11 @@ def main():
 
 
     textures = full_textures_list()
-    rep_palletjack_group = add_palletjacks()
+    (
+        rep_palletjack_group,
+        rep_local_palletjack_original_group,
+        rep_local_palletjack_randomized_group,
+    ) = add_palletjacks()
     rep_distractor_group = add_distractors(distractor_type=args.distractors)
 
     # We only need labels for the palletjack objects
@@ -301,11 +325,31 @@ def main():
         with rep.get.prims(path_pattern="SteerAxles"):
             rep.randomizer.color(colors=rep.distribution.uniform((0, 0, 0), (1, 1, 1)))
 
+        # Alternate between the source USDZ materials and randomized color materials.
+        # Separate instances let the original material bindings remain untouched.
+        with rep_local_palletjack_original_group:
+            rep.modify.visibility(rep.distribution.sequence([True, False]))
+
+        with rep_local_palletjack_randomized_group:
+            rep.modify.visibility(rep.distribution.sequence([False, True]))
+            rep.randomizer.color(colors=rep.distribution.uniform((0, 0, 0), (1, 1, 1)))
+
         # Randomize the pose of all the added palletjacks
         with rep_palletjack_group:
             rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
                             rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
                             scale=rep.distribution.uniform((0.01, 0.01, 0.01), (0.01, 0.01, 0.01)))
+
+        # Keep the USDZ-authored sizes comparable to the target pallet jacks.
+        with rep_local_palletjack_original_group:
+            rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
+                            rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
+                            scale=1.9)
+
+        with rep_local_palletjack_randomized_group:
+            rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
+                            rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
+                            scale=1.9)
 
         # Modify the pose of all the distractors in the scene
         if args.distractors != "None":

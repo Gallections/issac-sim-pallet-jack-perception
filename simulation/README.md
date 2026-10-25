@@ -21,6 +21,8 @@ The three Experiment 1 source collections were generated at 960x544 and are reta
 
 For each frame, Replicator samples a camera pose, pallet-jack placement and rotation, lighting values, and floor/wall material properties. The pallet-jack USD assets are tagged with the semantic class `palletjack`, which is used by the KITTI writer to produce annotations automatically. The resulting frames are independent randomized scene states, not consecutive samples from a continuous camera trajectory.
 
+Experiment 2 also loads the local USDZ variants from `assets/pallet_jacks/experiment-02/`. Each local model has an original-material instance and a color-randomized instance; Replicator alternates which appearance is visible across frames so the imported textures are represented alongside randomized appearances. Both local variants use a fixed 1.5x scale multiplier. NVIDIA's pallet-jack assets retain their original 0.01 scale conversion and existing color randomization.
+
 The generated sample frames and walkthrough video are linked in the [main README](../README.md#how-the-synthetic-data-is-generated).
 
 ## Launch helpers and paths
