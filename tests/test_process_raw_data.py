@@ -66,6 +66,13 @@ class ProcessRawDataTests(unittest.TestCase):
 
         self.assertEqual((self.output_root / negative["yolo_annotation_path"]).read_text(encoding="utf-8"), "")
 
+    def test_ignores_other_raw_datasets_not_referenced_by_manifests(self) -> None:
+        (self.raw_root / "real-pallet-jack-data").mkdir()
+
+        result = process_raw_export_from_manifests(self.raw_root, self.manifest_dir, self.output_root)
+
+        self.assertEqual(result.copied_image_count, 30)
+
     def test_refuses_to_overwrite_unmarked_processed_files(self) -> None:
         protected_file = self.output_root / "images" / "keep.txt"
         protected_file.parent.mkdir(parents=True)

@@ -6,6 +6,8 @@ For interactive exploration of a saved training run and optional real-image pred
 
 ## Inspect predictions on real images
 
+The LOCO subset-1 images and COCO annotations are staged locally under `data/raw/real-pallet-jack-data/`. The data source, license, and inventory are documented in [`docs/data.md`](data.md). The JSON covers 1,075 images; 65 additional JPGs lack COCO image records and should not be scored as negative examples until checked. The set has not yet been converted into the project's one-class format or used to calculate real-image metrics. Keep this real dataset separate from synthetic results.
+
 Use the trained checkpoint to produce annotated copies of one real photograph or every supported image in a folder. Images do not need labels; this is for visual inspection and does not calculate accuracy metrics.
 
 ```bash
@@ -38,8 +40,10 @@ The selected YOLO26n checkpoint (`best.pt`, epoch 89 by validation mAP50-95) was
 | Validation | 500 | 0.9313 | 0.8243 | 0.9098 | 0.7918 |
 | Held-out test | 500 | 0.9248 | 0.8087 | 0.9059 | 0.7861 |
 
-The test split has 200 `distractors_additional`, 200 `distractors_warehouse`, and 100 `no_distractors` images, with 1,427 labeled pallet-jack instances total. The similar validation and test metrics support the limited conclusion that this checkpoint performs consistently on held-out synthetic frames from the same data-generation setup. They do not measure transfer to real photographs, establish robustness to real lighting/cameras/occlusion, or prove deployment readiness.
+The test split has 200 `distractors_additional`, 200 `distractors_warehouse`, and 100 `no_distractors` images, with 1,427 labeled pallet-jack instances total. One close-up example (`1006.png`) can look like a mislabeled warehouse prop because the pallet jack is cropped and occupies most of the frame; visual review confirms it is a pallet jack. The reported scores measure performance on this held-out synthetic split against its exported labels. They do not measure real-photo performance or establish robustness to real camera, lighting, or occlusion conditions.
 
-This test set is now a reported baseline and should not be repeatedly consulted to tune confidence thresholds or choose among many checkpoints. Use a new untouched test set or independently labeled real-image benchmark for subsequent model changes. Keep real-image results separate from synthetic results and report dataset source, labels, checkpoint, settings, and metrics together.
+Even with verified labels, the result would be limited to held-out synthetic frames from the same data-generation setup. It would not measure transfer to real photographs, establish robustness to real lighting/cameras/occlusion, or prove deployment readiness.
+
+Once the label audit is complete and the test metrics are regenerated, avoid repeatedly consulting this test set to tune confidence thresholds or choose among many checkpoints. Use a new untouched test set or independently labeled real-image benchmark for subsequent model changes. Keep real-image results separate from synthetic results and report dataset source, label status, checkpoint, settings, and metrics together.
 
 Tracked visualization snapshots are in `docs/assets/test/`; full evaluation outputs remain under ignored `runs/`.

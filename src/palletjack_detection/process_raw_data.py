@@ -139,10 +139,11 @@ def process_raw_export_from_manifests(
     source = Path(source_root).expanduser().resolve()
     manifests = Path(manifest_dir).expanduser().resolve()
     destination = Path(output_root).expanduser().resolve()
-    validation_report = validate_kitti_object_detection_export(source)
+    rows = _read_split_manifest_rows(manifests)
+    manifest_scenarios = tuple(sorted({row["scenario"] for row in rows}))
+    validation_report = validate_kitti_object_detection_export(source, scenario_names=manifest_scenarios)
     if not validation_report.ok:
         raise KittiExportValidationError(validation_report)
-    rows = _read_split_manifest_rows(manifests)
     expected_frame_count = sum(scenario.image_count for scenario in validation_report.scenarios)
     if len(rows) != expected_frame_count:
         raise ValueError(

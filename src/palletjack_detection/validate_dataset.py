@@ -6,6 +6,7 @@ import argparse
 import math
 from dataclasses import dataclass, field
 from pathlib import Path
+from collections.abc import Sequence
 
 from PIL import Image, UnidentifiedImageError
 
@@ -121,7 +122,27 @@ def _validate_kitti_label_file(
             summary.object_count += 1
 
 
-def validate_kitti_object_detection_export(root: str | Path) -> KittiValidationReport:
+def _select_scenario_directories(root_path: Path, scenario_names: Sequence[str] | None) -> list[Path]:
+    available = {path.name: path for path in root_path.iterdir() if path.is_dir()}
+    if scenario_names is None:
+        return sorted(available.values(), key=lambda path: path.name)
+    if not scenario_names:
+        raise ValueError("scenario_names must contain at least one scenario")
+    if len(set(scenario_names)) != len(scenario_names):
+        raise ValueError("scenario_names must not contain duplicates")
+    for name in scenario_names:
+        if not isinstance(name, str) or not name or Path(name).name != name or name in {".", ".."}:
+            raise ValueError(f"scenario name must be a direct child directory name: {name!r}")
+        if name not in available:
+            raise ValueError(f"requested scenario does not exist: {name}")
+    return [available[name] for name in sorted(scenario_names)]
+
+
+def validate_kitti_object_detection_export(
+    root: str | Path,
+    *,
+    scenario_names: Sequence[str] | None = None,
+) -> KittiValidationReport:
     """Check scenario image/label pairs and KITTI 2D boxes without modifying data."""
     root_path = Path(root).expanduser().resolve()
     report = KittiValidationReport(root=root_path)
@@ -129,7 +150,7 @@ def validate_kitti_object_detection_export(root: str | Path) -> KittiValidationR
         _add_issue(report, "", root_path, "dataset root does not exist or is not a directory")
         return report
 
-    scenario_dirs = sorted((path for path in root_path.iterdir() if path.is_dir()), key=lambda path: path.name)
+    scenario_dirs = _select_scenario_directories(root_path, scenario_names)
     if not scenario_dirs:
         _add_issue(report, "", root_path, "dataset root contains no scenario directories")
         return report
@@ -184,12 +205,21 @@ def validate_kitti_object_detection_export(root: str | Path) -> KittiValidationR
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate an Isaac Sim KITTI-style object-detection export.")
     parser.add_argument("--root", type=Path, default=Path("data/raw"), help="dataset root (default: data/raw)")
+    parser.add_argument(
+        "--scenario",
+        action="append",
+        dest="scenario_names",
+        help="validate only this scenario directory (repeat for multiple scenarios)",
+    )
     parser.add_argument("--max-issues", type=int, default=50, help="maximum issue details to print (default: 50)")
     args = parser.parse_args(argv)
     if args.max_issues < 0:
         parser.error("--max-issues must be zero or greater")
 
-    report = validate_kitti_object_detection_export(args.root)
+    try:
+        report = validate_kitti_object_detection_export(args.root, scenario_names=args.scenario_names)
+    except ValueError as exc:
+        parser.error(str(exc))
     print(f"Dataset: {report.root}")
     for scenario in report.scenarios:
         print(

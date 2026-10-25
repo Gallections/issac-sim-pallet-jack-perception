@@ -7,6 +7,7 @@ import csv
 import math
 import random
 import tempfile
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -78,11 +79,15 @@ def assign_scenario_stratified_split_rows(
     source_root: Path,
     ratios: tuple[float, float, float],
     seed: int,
+    scenario_names: Sequence[str] | None = None,
 ) -> tuple[dict[str, list[dict[str, str]]], dict[str, dict[str, int]]]:
     """Assign each source image once and record its future processed-data paths."""
     split_rows: dict[str, list[dict[str, str]]] = {split: [] for split in SPLIT_NAMES}
     split_counts: dict[str, dict[str, int]] = {split: {} for split in SPLIT_NAMES}
-    scenario_dirs = sorted((path for path in source_root.iterdir() if path.is_dir()), key=lambda path: path.name)
+    if scenario_names is None:
+        scenario_dirs = sorted((path for path in source_root.iterdir() if path.is_dir()), key=lambda path: path.name)
+    else:
+        scenario_dirs = [source_root / name for name in sorted(scenario_names)]
     for scenario_dir in scenario_dirs:
         scenario = scenario_dir.name
         rgb_dir = scenario_dir / "Camera" / "rgb"
@@ -134,6 +139,7 @@ def create_stratified_split_manifests(
     validation_ratio: float = DEFAULT_SPLIT_RATIOS[1],
     test_ratio: float = DEFAULT_SPLIT_RATIOS[2],
     overwrite: bool = False,
+    scenario_names: Sequence[str] | None = None,
 ) -> SplitManifestResult:
     """Validate and split source frames; write manifests without copying data."""
     ratios = (train_ratio, validation_ratio, test_ratio)
@@ -141,11 +147,12 @@ def create_stratified_split_manifests(
     root = Path(source_root).expanduser().resolve()
     output_dir = Path(manifest_dir).expanduser().resolve()
     processed_path = Path(processed_root).expanduser().resolve() if processed_root else output_dir.parent
-    validation_report = validate_kitti_object_detection_export(root)
+    validation_report = validate_kitti_object_detection_export(root, scenario_names=scenario_names)
     if not validation_report.ok:
         raise KittiExportValidationError(validation_report)
 
-    split_rows, split_counts = assign_scenario_stratified_split_rows(root, ratios, seed)
+    selected_scenarios = tuple(summary.name for summary in validation_report.scenarios)
+    split_rows, split_counts = assign_scenario_stratified_split_rows(root, ratios, seed, selected_scenarios)
     manifest_paths = {split: output_dir / f"{split}.csv" for split in SPLIT_NAMES}
     if not overwrite:
         existing_manifests = [path for path in manifest_paths.values() if path.exists()]
@@ -182,6 +189,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output-dir", type=Path, default=Path("data/processed/splits"), help="manifest directory")
     parser.add_argument("--processed-root", type=Path, default=Path("data/processed"), help="future processed-data root")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--scenario",
+        action="append",
+        dest="scenario_names",
+        help="split only this scenario directory (repeat for multiple scenarios)",
+    )
     parser.add_argument("--train-ratio", type=float, default=DEFAULT_SPLIT_RATIOS[0])
     parser.add_argument("--validation-ratio", type=float, default=DEFAULT_SPLIT_RATIOS[1])
     parser.add_argument("--test-ratio", type=float, default=DEFAULT_SPLIT_RATIOS[2])
@@ -197,6 +210,7 @@ def main(argv: list[str] | None = None) -> int:
             validation_ratio=args.validation_ratio,
             test_ratio=args.test_ratio,
             overwrite=args.overwrite,
+            scenario_names=args.scenario_names,
         )
     except KittiExportValidationError as exc:
         print(f"Dataset validation failed: {exc}")

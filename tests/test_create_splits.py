@@ -92,6 +92,19 @@ class CreateSplitManifestsTests(unittest.TestCase):
         for split in ("train", "validation", "test"):
             self.assertEqual((first / f"{split}.csv").read_bytes(), (second / f"{split}.csv").read_bytes())
 
+    def test_splits_only_requested_synthetic_scenarios(self) -> None:
+        unrelated_root = self.dataset_root / "real-pallet-jack-data"
+        unrelated_root.mkdir()
+
+        result = create_stratified_split_manifests(
+            self.dataset_root,
+            self.output_root,
+            scenario_names=("no_distractors",),
+        )
+
+        self.assertEqual(result.total_frames, 10)
+        self.assertEqual(set(result.split_counts["train"]), {"no_distractors"})
+
     def test_invalid_dataset_is_rejected_without_writing_manifests(self) -> None:
         label = self.dataset_root / "no_distractors" / "Camera" / "object_detection" / "0.txt"
         label.write_text("palletjack malformed\n", encoding="utf-8")

@@ -123,6 +123,20 @@ class ValidateKittiExportTests(unittest.TestCase):
         self.assertFalse(report.ok)
         self.assertTrue(any("dataset root does not exist" in issue.message for issue in report.issues))
 
+    def test_validates_only_requested_scenarios_when_raw_root_contains_other_datasets(self) -> None:
+        self.add_image("0")
+        self.add_label("0", VALID_LABEL)
+        (self.root / "real-pallet-jack-data").mkdir()
+
+        report = validate_kitti_object_detection_export(self.root, scenario_names=("scenario",))
+
+        self.assertTrue(report.ok)
+        self.assertEqual([summary.name for summary in report.scenarios], ["scenario"])
+
+    def test_requested_scenario_names_must_exist(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requested scenario does not exist"):
+            validate_kitti_object_detection_export(self.root, scenario_names=("missing",))
+
     def test_command_returns_failure_status_when_data_has_issues(self) -> None:
         self.add_image("unmatched")
         output = StringIO()

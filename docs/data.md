@@ -44,14 +44,17 @@ Raw and processed data, training runs, and model weights are intended to stay ou
 Install dependencies with `python -m pip install -r requirements.txt`, then run the validator from the repository root:
 
 ```powershell
-python scripts/validate_dataset.py
+python scripts/validate_dataset.py --root data/raw `
+  --scenario distractors_additional `
+  --scenario distractors_warehouse `
+  --scenario no_distractors
 ```
 
 The reusable API is named `validate_kitti_object_detection_export` in `src/palletjack_detection/validate_dataset.py` to make its supported annotation format and task explicit.
 
-Use `--root <path>` for another export and `--max-issues <number>` to control how many issue details are printed. The command does not change files. It exits with status `0` when no issues are found and `1` when any issue is found. Empty annotation files are counted as empty frames and are not treated as errors; this preserves the possibility of legitimate negative examples.
+Use `--root <path>` for another export, repeat `--scenario <directory>` to select scenario folders when the raw root contains multiple datasets, and use `--max-issues <number>` to control how many issue details are printed. The command does not change files. It exits with status `0` when no issues are found and `1` when any issue is found. Empty annotation files are counted as empty frames and are not treated as errors; this preserves the possibility of legitimate negative examples.
 
-The validator checks that required `Camera/rgb` and `Camera/object_detection` folders exist, pairs files by frame stem, opens and runs Pillow's file verification on every RGB image to get its actual dimensions, and checks label field count, finite numeric values, known class (`palletjack`), KITTI occlusion range, positive 2D box extent, and image bounds. Pillow verification checks file integrity without fully decoding all image pixels. The validator reports unreadable images, missing pairs, unknown classes, and malformed annotations. It currently recognizes common image extensions (PNG, JPEG, BMP, TIFF, and WebP).
+The validator checks that required `Camera/rgb` and `Camera/object_detection` folders exist, pairs files by frame stem, opens and runs Pillow's file verification on every RGB image to get its actual dimensions, and checks label field count, finite numeric values, known class (`palletjack`), KITTI occlusion range, positive 2D box extent, and image bounds. Pillow verification checks file integrity without fully decoding all image pixels. The validator reports unreadable images, missing pairs, unknown classes, and malformed annotations. It currently recognizes common image extensions (PNG, JPEG, BMP, TIFF, and WebP). **It does not inspect image content or verify that a `palletjack` box encloses a pallet jack.**
 
 This is a validator for the 2D object-detection fields, not a full semantic validation of KITTI's 3D dimensions and pose values. It checks that the remaining fields are present and numeric, but does not interpret them; the current export includes zero-filled 3D fields.
 
@@ -71,7 +74,7 @@ The validator was run on the local export on 2026-10-18. It found no structural 
 | `distractors_warehouse` | 2,000 | 2,000 | 5,826 | 190 |
 | `no_distractors` | 1,000 | 1,000 | 3,242 | 65 |
 
-Empty annotations were accepted and counted as negative frames. The clean report is evidence of file pairing and the checks above; it does not settle the coordinate-edge convention or validate KITTI 3D values.
+Empty annotations were accepted and counted as negative frames. The clean report is evidence of file pairing and the checks above; it does not establish visual class correctness, settle the coordinate-edge convention, or validate KITTI 3D values. A later manual review of sample frames identified a possible class/box mismatch; complete a visual annotation audit before treating model metrics as reliable.
 
 ## Synthetic train/validation/test split
 
@@ -87,15 +90,21 @@ The frames are independent scenes, so the first experiment uses a seeded random 
 Create the split manifests from the repository root after installing dependencies:
 
 ```bash
-python scripts/create_splits.py
+python scripts/create_splits.py \
+  --scenario distractors_additional \
+  --scenario distractors_warehouse \
+  --scenario no_distractors
 ```
 
-`scripts/create_splits.py` validates the raw export and writes `train.csv`, `validation.csv`, and `test.csv` under `data/processed/splits/`. It assigns each frame once, stratifies within scenario, and records raw source paths plus intended paths for processed RGB, copied KITTI labels, and converted YOLO labels. It does not copy files or convert annotations. With the same source and seed, it reproduces the same assignments.
+`scripts/create_splits.py` validates the selected scenario folders and writes `train.csv`, `validation.csv`, and `test.csv` under `data/processed/splits/`. The explicit selection keeps `real-pallet-jack-data` from being mistaken for an Isaac Sim scenario. It assigns each frame once, stratifies within scenario, and records raw source paths plus intended paths for processed RGB, copied KITTI labels, and converted YOLO labels. It does not copy files or convert annotations. With the same source and seed, it reproduces the same assignments.
 
 For the current data, the default 80/10/10 split still gives 4,000 training, 500 validation, and 500 test frames. Since manifests already exist in this workspace, regenerate them with `--overwrite` after changing the split workflow:
 
 ```bash
-python scripts/create_splits.py --overwrite
+python scripts/create_splits.py --overwrite \
+  --scenario distractors_additional \
+  --scenario distractors_warehouse \
+  --scenario no_distractors
 ```
 
 ### Process the selected raw files
@@ -106,7 +115,7 @@ After split manifests are ready, copy the selected RGB images and KITTI labels t
 python scripts/process_raw_data.py
 ```
 
-The processor reads the manifests, validates the raw export, and copies only these files:
+The processor reads the manifests, validates only the scenario folders named by those manifests, and copies only these files:
 
 - RGB images to `data/processed/images/{train,val,test}/<scenario>/`.
 - Original KITTI labels to `data/processed/kitti_labels/{train,val,test}/<scenario>/`.
@@ -130,14 +139,20 @@ Keep the scenario identity available in manifests or split metadata so evaluatio
 
 ## Real-image evaluation data
 
-Real pallet-jack photographs are not currently included. Near the evaluation stage, identify images with a clear source and reuse license/permission, document their provenance, and annotate them consistently. Keep real images in a separate evaluation set and report real-image results separately from synthetic validation/test results. Do not mix them into training unless that becomes an explicit, documented experiment.
+### LOCO real-world pallet-truck images
+
+The project uses the public **Logistics Objects in Context (LOCO)** dataset from the Technical University of Munich's Materials Handling, Material Flow, Logistics group. LOCO contains real logistics-scene images and manually annotated bounding boxes for forklifts, pallet trucks, pallets, small load carriers, and stillages. The official [LOCO repository](https://github.com/tum-fml/loco) reports 37,988 images across five logistics environments, of which 5,593 are annotated, and publishes the dataset under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Cite the dataset as Mayershofer, Holm, Molter, and Fottner, “LOCO: Logistics Objects in Context,” ICMLA 2020; see the [paper](https://mediatum.ub.tum.de/doc/1578845/document.pdf) and [repository](https://github.com/tum-fml/loco).
+
+The local, Git-ignored copy is in `data/raw/real-pallet-jack-data/`. It contains only `subset-1` images plus `loco-all-v1.json`. The official repository identifies subset 1 as a validation subset and provides COCO annotations in `rgb/loco-sub1-v1-val.json` as well as a full annotation file. The local JSON currently retains only records whose filenames match subset 1; it has 1,075 image records and 24,763 annotations across the original five classes, including 594 `pallet_truck` instances across 403 images. Of the 1,075 image records, 672 have no `pallet_truck` annotation and should remain as negative examples for this one-class task after other-class boxes are removed. The folder has 1,140 JPGs, so 65 local images have no image record in this JSON. Keep those source files, but do not score them as negatives until ground truth is confirmed for them.
+
+For this project's one-class detector, `pallet_truck` is the target class and will be renamed `pallet-jack` in the derived dataset. Keep all source images, remove boxes for other classes, and retain empty annotation lists for the 672 JSON-listed images with no pallet-truck box. The 65 JPGs missing from the COCO `images` array need separate ground-truth review before they can be included in quantitative evaluation. Keep this real-image evaluation data separate from synthetic training and evaluation, and report its metrics separately. The real set has not yet been converted or evaluated.
 
 ## Details still to confirm
 
 - Isaac Sim version, scene/source project, camera configuration, and exact SDG export settings.
-- Dataset origin and applicable asset/data license or usage restrictions.
+- Provenance and license for any additional data sources beyond LOCO.
 - Isaac Sim image dimensions are reported as 960×544; validation reads each image's actual dimensions.
 - KITTI coordinate conventions, including whether maximum box coordinates are inclusive or exclusive.
 - Whether frames are independent captures or sequences, and what grouping information is available for leakage-aware splits.
 - Whether future experiments should change the current YOLO format or 80/10/10 split policy.
-- Provenance and licensing for any real-image evaluation set.
+- The processing and evaluation procedure for the staged LOCO subset.

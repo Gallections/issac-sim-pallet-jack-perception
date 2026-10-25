@@ -10,14 +10,14 @@ The repository keeps the work in distinct stages: simulator-based synthetic data
 - **Synthetic source data:** 5,000 independently randomized rendered frames from a shared Isaac Sim warehouse environment, across three conditions.
 - **Dataset splits:** 4,000 train, 500 validation, and 500 held-out test images (80/10/10, seed 42).
 - **Baseline:** fine-tuned Ultralytics YOLO26n, 100 epochs, 640-pixel model input, batch size 16.
-- **Current state:** data preparation, training, prediction visualization, an interactive results notebook, and held-out synthetic test evaluation are available.
-- **Not yet complete:** a labeled real-image benchmark and Isaac Sim inference integration.
+- **Current state:** data preparation, training, prediction visualization, an interactive results notebook, and held-out synthetic test evaluation are available. Raw LOCO real-world data is staged locally; processing and real-image evaluation remain pending.
+- **Not yet complete:** a processed real-image benchmark and Isaac Sim inference integration.
 
 ## Why this project matters
 
 This project tests a practical sim-to-real research question: **can pallet-jack examples generated in Isaac Sim provide useful training data for an object detector, and how well does the resulting detector perform on unseen scenes?** Synthetic generation makes it possible to create varied, automatically annotated examples without manually labeling every frame. That can reduce the cost of building an initial perception dataset and makes controlled scenario variation possible.
 
-The current experiment is an initial, reproducible synthetic-data baseline. The model is fine-tuned outside Isaac Sim and evaluated on a held-out synthetic split. Its results show performance on unseen samples from the same synthetic data collection—not real-world accuracy, robustness to deployment conditions, or readiness for a robot. Those claims require separately collected and labeled real images, followed by integration and testing in the target system.
+The current experiment is an initial, reproducible synthetic-data baseline. The model is fine-tuned outside Isaac Sim and evaluated on a held-out synthetic split. Its results show performance on unseen samples from the same synthetic data collection—not real-world accuracy, robustness to deployment conditions, or readiness for a robot. Those claims require separately sourced and labeled real images, followed by integration and testing in the target system.
 
 The research contribution at this stage is the documented end-to-end method and its baseline measurement: controlled synthetic scene variation, automatically generated labels, a reproducible data-preparation and split process, external fine-tuning, and held-out evaluation. The current result is a starting point for later comparisons. It does not yet quantify which randomization choices help most, compare synthetic and real performance, or show that synthetic training data can replace real data.
 
@@ -35,7 +35,8 @@ flowchart LR
     H --> I[Fine-tune YOLO externally]
     I --> J[Explore training and validation artifacts]
     I --> K[Evaluate held-out synthetic test set]
-    I --> L[Build labeled real-image benchmark - planned]
+    L[Prepare public LOCO subset-1 data] --> N[Evaluate real images - planned]
+    I --> N
     I --> M[Integrate inference in Isaac Sim - planned]
 ```
 
@@ -47,7 +48,7 @@ The data-generation script starts from Isaac Sim's Simple Warehouse environment.
 
 The generator adds pallet-jack assets and tags them with the semantic class `palletjack`. It samples camera position and orientation, and varies pallet-jack placement and rotation. It also randomizes floor and wall materials and lighting. Depending on the run, it adds warehouse props, props drawn from additional asset groups, or no extra distractor group. “No distractors” means no additional randomized distractors are added; the base warehouse environment remains.
 
-Replicator's KITTI writer exports the rendered RGB frames and KITTI-style object-detection annotations. The pallet-jack semantic tags let the writer create object labels automatically, avoiding manual box drawing for synthetic images. The downstream detector currently uses RGB plus the 2D boxes only; other modalities present in the raw export are retained as source data but are outside this baseline's training input.
+Replicator's KITTI writer exports the rendered RGB frames and KITTI-style object-detection annotations. The pallet-jack semantic tags are intended to let the writer create object labels automatically, avoiding manual box drawing for synthetic images. Automatic export does not by itself guarantee that each box encloses a pallet jack: visual semantic review is still necessary. The downstream detector currently uses RGB plus the 2D boxes only; other modalities present in the raw export are retained as source data but are outside this baseline's training input.
 
 The current collection contains three generation conditions:
 
@@ -57,11 +58,11 @@ The current collection contains three generation conditions:
 | `distractors_additional` | 2,000 | Base warehouse plus distractors selected from additional asset groups, including hospital and office props |
 | `no_distractors` | 1,000 | Base warehouse and pallet jacks, without an added distractor group |
 
-The current generator requests 960x544 renders. These examples illustrate frames from each condition; green boxes show the generated ground-truth pallet-jack labels.
+The current generator requests 960x544 renders. These are unannotated RGB examples from each condition. They illustrate scene appearance only; they are not examples of verified ground-truth boxes.
 
 | Warehouse distractors | Additional distractors | No added distractors |
 | --- | --- | --- |
-| ![Isaac Sim synthetic frame with warehouse distractors and generated pallet-jack annotation](docs/assets/sdg/distractors_warehouse.jpg) | ![Isaac Sim synthetic frame with additional distractors and generated pallet-jack annotation](docs/assets/sdg/distractors_additional.jpg) | ![Isaac Sim synthetic frame without added distractors and generated pallet-jack annotations](docs/assets/sdg/no_distractors.jpg) |
+| ![Isaac Sim synthetic RGB frame with warehouse distractors](docs/assets/sdg/distractors_warehouse.jpg) | ![Isaac Sim synthetic RGB frame with additional distractors](docs/assets/sdg/distractors_additional.jpg) | ![Isaac Sim synthetic RGB frame without added distractors](docs/assets/sdg/no_distractors.jpg) |
 
 The walkthrough is shown inline as a clickable preview; select it to open the [scene-generation video](docs/assets/sdg/SDG_sample0.mov):
 
@@ -73,7 +74,7 @@ GitHub README pages do not play repository-relative video files directly, so thi
 
 The data flow preserves both the source annotations and the model-ready annotations. Raw Isaac Sim outputs live in `data/raw/` and are not edited by preparation steps. The validator checks image/annotation pairs and box geometry. A seeded split step assigns every frame to train, validation, or test; the preparation step then copies selected RGB images and original KITTI labels into `data/processed/`, converts the boxes to normalized YOLO text labels, and writes the dataset YAML. This separation makes the raw export auditable and allows the processed dataset to be regenerated.
 
-The pretrained YOLO26n detector is fine-tuned outside the simulator on the train split. Validation data guides checkpoint selection. The selected checkpoint is then evaluated on the held-out synthetic test split. A future real-world claim needs separately sourced, labeled real images; running inference on unlabeled photos is useful visual review but cannot produce precision, recall, or mAP.
+The pretrained YOLO26n detector is fine-tuned outside the simulator on the train split. Validation data guides checkpoint selection. The selected checkpoint is then evaluated on the held-out synthetic test split. A public real-world dataset from LOCO has now been staged under `data/raw/real-pallet-jack-data/`; it still needs processing and evaluation before it can support real-image metrics. Dataset provenance and the current annotation inventory are documented in [`docs/data.md`](docs/data.md).
 
 ### Experimental design and what the metrics mean
 
@@ -92,7 +93,9 @@ The model was evaluated on the held-out synthetic test split after checkpoint se
 | Validation, best checkpoint at epoch 89 | 500 | 0.9313 | 0.8243 | 0.9098 | 0.7918 |
 | Held-out synthetic test | 500 | 0.9248 | 0.8087 | 0.9059 | 0.7861 |
 
-The close validation and test results are encouraging evidence that the baseline generalizes to held-out synthetic frames sampled from these scenario groups. They do not establish performance on real photos: all 5,000 frames come from the Isaac Sim data-generation process, and a labeled real-image benchmark has not yet been assembled. Treat this as an initial baseline, not a deployment claim. The held-out test results should not be used to tune the model; future model changes should be judged on a new untouched test set or an independently collected evaluation set.
+**Reading the test examples:** one close-up frame (`1006.png`) may initially look like a mislabeled warehouse prop because the pallet jack is cropped and fills most of the image. On review, it is a pallet jack; its large box reflects the close camera view. The automated validator checks annotation structure and box geometry, while visual review helps confirm object identity. The reported metrics measure performance against the exported synthetic labels and should be interpreted as synthetic-test results, not real-world accuracy.
+
+These synthetic-only results do not measure performance on real photos: all 5,000 frames come from Isaac Sim. A public labeled LOCO subset is now staged locally, but it has not yet been processed into the project's one-class evaluation set or evaluated with the model. Report those real-image results separately when available. Future model changes should be judged on a fresh untouched test set or independent evaluation set.
 
 ### Training losses and validation metrics
 
@@ -150,12 +153,14 @@ The test precision-recall curve and confusion matrices below were generated afte
 
 The local raw export contains these three scenario groups:
 
-| Scenario | Frames | Labeled objects | Empty annotations |
+| Scenario | Frames | Current labeled instances* | Empty annotations |
 | --- | ---: | ---: | ---: |
 | `distractors_additional` | 2,000 | 5,017 | 259 |
 | `distractors_warehouse` | 2,000 | 5,826 | 190 |
 | `no_distractors` | 1,000 | 3,242 | 65 |
 | **Total** | **5,000** | **14,085** | **514** |
+
+These are annotation counts; visual class correctness has not yet been fully audited.
 
 Images are reported as 960x544. The raw folders contain RGB, object-detection labels, depth, instance segmentation, and semantic outputs. The current detector pipeline uses only RGB images and KITTI-style `object_detection` labels. It preserves original KITTI labels in the processed tree and writes YOLO labels alongside them; depth and segmentation outputs stay in the raw tree.
 
@@ -196,20 +201,26 @@ Check that the active interpreter is the virtual environment's Python with `whic
 The validator checks the raw RGB/annotation pairs, image readability, class names, annotation fields, and 2D box geometry. It is read-only; empty annotations are allowed as negative frames.
 
 ```bash
-python scripts/validate_dataset.py --root data/raw
+python scripts/validate_dataset.py --root data/raw \
+  --scenario distractors_additional \
+  --scenario distractors_warehouse \
+  --scenario no_distractors
 ```
 
-The current export passed validation with no issues. See [data workflow](docs/data.md) for the detailed report and what the validator does not check.
+The current export passed the structural and box-geometry checks with no issues. This does not verify that each labeled box visually contains a pallet jack; see the [data workflow](docs/data.md) for the validator's scope and the current annotation-quality caveat.
 
 ### 2. Create split manifests
 
 This step assigns every raw frame to exactly one split and writes CSV manifests. It does not copy image files or convert labels.
 
 ```bash
-python scripts/create_splits.py
+python scripts/create_splits.py \
+  --scenario distractors_additional \
+  --scenario distractors_warehouse \
+  --scenario no_distractors
 ```
 
-Defaults are 80/10/10 and seed 42. Existing manifests are not silently replaced; pass `--overwrite` when intentionally regenerating them.
+Defaults are 80/10/10 and seed 42. The scenario options select the Isaac Sim folders and keep `real-pallet-jack-data` out of the synthetic split. Existing manifests are not silently replaced; pass `--overwrite` when intentionally regenerating them.
 
 ### 3. Process raw data into the YOLO dataset
 
@@ -219,7 +230,11 @@ Run this after creating the manifests. It copies only the selected RGB images an
 python scripts/process_raw_data.py
 ```
 
-The processing step preserves raw inputs and keeps the original KITTI labels under `data/processed/kitti_labels/`. It writes images under `data/processed/images/` and YOLO annotations under `data/processed/labels/`. For a deliberate rerun over generated outputs, use `--overwrite`. See [data workflow](docs/data.md) for the full layout and options.
+The processing step preserves raw inputs and uses the scenario names recorded in the split manifests, so the LOCO folder is not treated as an Isaac Sim scenario. It keeps the original KITTI labels under `data/processed/kitti_labels/`, writes images under `data/processed/images/`, and YOLO annotations under `data/processed/labels/`. For a deliberate rerun over generated outputs, use `--overwrite`. See [data workflow](docs/data.md) for the full layout and options.
+
+### Explore data preparation interactively
+
+Open [`notebooks/data_processing.ipynb`](notebooks/data_processing.ipynb) for a guided, visual walkthrough of both the synthetic KITTI-to-YOLO pipeline and LOCO COCO filtering. The notebook’s write steps are off by default; turn them on only when you intend to generate or replace processed data.
 
 ### 4. Preflight and train
 
