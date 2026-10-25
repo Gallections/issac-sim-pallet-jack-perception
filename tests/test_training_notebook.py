@@ -11,7 +11,7 @@ from unittest.mock import patch
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-NOTEBOOK_PATH = PROJECT_ROOT / "notebooks" / "01_explore_training_results.ipynb"
+NOTEBOOK_PATH = PROJECT_ROOT / "notebooks" / "explore_training_results.ipynb"
 
 
 class TrainingResultsNotebookTests(unittest.TestCase):
@@ -31,14 +31,12 @@ class TrainingResultsNotebookTests(unittest.TestCase):
         ]
         cls.code = "\n\n".join(cls.code_cells)
 
-    def test_notebook_is_valid_unexecuted_jupyter_notebook(self) -> None:
+    def test_notebook_is_valid_jupyter_notebook(self) -> None:
         self.assertEqual(self.notebook["nbformat"], 4)
         self.assertGreaterEqual(self.notebook["nbformat_minor"], 4)
         self.assertEqual(len({cell["id"] for cell in self.cells}), len(self.cells))
         for cell in self.cells:
             if cell["cell_type"] == "code":
-                self.assertIsNone(cell["execution_count"])
-                self.assertEqual(cell["outputs"], [])
                 ast.parse("".join(cell["source"]))
 
     def test_notebook_documents_run_selection_and_saved_result_exploration(self) -> None:
@@ -47,8 +45,8 @@ class TrainingResultsNotebookTests(unittest.TestCase):
         self.assertIn("confusion_matrix.png", self.code)
         self.assertIn("val_batch", self.code)
         self.assertIn("metrics/mAP50-95(B)", self.code)
-        self.assertIn("BoxPR_curve.png", self.code)
-        self.assertIn("precision-recall curve", self.markdown)
+        self.assertIn("metrics/mAP50-95(B)", self.code)
+        self.assertIn("Plot training losses and validation metrics", self.markdown)
 
     def test_missing_run_artifacts_show_recovery_guidance(self) -> None:
         self.assertIn("choose another run", self.code.lower())

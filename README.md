@@ -10,8 +10,8 @@ The repository keeps the work in distinct stages: simulator-based synthetic data
 - **Synthetic source data:** 5,000 independently randomized rendered frames from a shared Isaac Sim warehouse environment, across three conditions.
 - **Dataset splits:** 4,000 train, 500 validation, and 500 held-out test images (80/10/10, seed 42).
 - **Baseline:** fine-tuned Ultralytics YOLO26n, 100 epochs, 640-pixel model input, batch size 16.
-- **Current state:** data preparation, training, prediction visualization, an interactive results notebook, and held-out synthetic test evaluation are available. Raw LOCO real-world data is staged locally; processing and real-image evaluation remain pending.
-- **Not yet complete:** a processed real-image benchmark and Isaac Sim inference integration.
+- **Current state:** data preparation, training, prediction visualization, an interactive results notebook, and held-out synthetic test evaluation are available. The LOCO subset-1 real-image data has been filtered, converted from COCO to YOLO evaluation labels, and evaluated separately with the synthetic-trained checkpoint.
+- **Not yet complete:** a broader, independently audited real-image benchmark and Isaac Sim inference integration.
 
 ## Why this project matters
 
@@ -19,7 +19,7 @@ This project tests a practical sim-to-real research question: **can pallet-jack 
 
 The current experiment is an initial, reproducible synthetic-data baseline. The model is fine-tuned outside Isaac Sim and evaluated on a held-out synthetic split. Its results show performance on unseen samples from the same synthetic data collection—not real-world accuracy, robustness to deployment conditions, or readiness for a robot. Those claims require separately sourced and labeled real images, followed by integration and testing in the target system.
 
-The research contribution at this stage is the documented end-to-end method and its baseline measurement: controlled synthetic scene variation, automatically generated labels, a reproducible data-preparation and split process, external fine-tuning, and held-out evaluation. The current result is a starting point for later comparisons. It does not yet quantify which randomization choices help most, compare synthetic and real performance, or show that synthetic training data can replace real data.
+The research contribution at this stage is the documented end-to-end method and its baseline measurement: controlled synthetic scene variation, automatically generated labels, a reproducible data-preparation and split process, external fine-tuning, and held-out evaluation. The current result is a starting point for later comparisons. It now measures synthetic-to-real transfer on the selected LOCO subset, but does not quantify which randomization choices help most or show that synthetic training data can replace real data.
 
 ## Research workflow
 
@@ -35,7 +35,7 @@ flowchart LR
     H --> I[Fine-tune YOLO externally]
     I --> J[Explore training and validation artifacts]
     I --> K[Evaluate held-out synthetic test set]
-    L[Prepare public LOCO subset-1 data] --> N[Evaluate real images - planned]
+    L[Filter public LOCO subset-1 COCO data] --> O[Convert COCO boxes to YOLO evaluation labels] --> N[Evaluate real images separately]
     I --> N
     I --> M[Integrate inference in Isaac Sim - planned]
 ```
@@ -74,7 +74,7 @@ GitHub README pages do not play repository-relative video files directly, so thi
 
 The data flow preserves both the source annotations and the model-ready annotations. Raw Isaac Sim outputs live in `data/raw/` and are not edited by preparation steps. The validator checks image/annotation pairs and box geometry. A seeded split step assigns every frame to train, validation, or test; the preparation step then copies selected RGB images and original KITTI labels into `data/processed/`, converts the boxes to normalized YOLO text labels, and writes the dataset YAML. This separation makes the raw export auditable and allows the processed dataset to be regenerated.
 
-The pretrained YOLO26n detector is fine-tuned outside the simulator on the train split. Validation data guides checkpoint selection. The selected checkpoint is then evaluated on the held-out synthetic test split. A public real-world dataset from LOCO has now been staged under `data/raw/real-pallet-jack-data/`; it still needs processing and evaluation before it can support real-image metrics. Dataset provenance and the current annotation inventory are documented in [`docs/data.md`](docs/data.md).
+The pretrained YOLO26n detector is fine-tuned outside the simulator on the train split. Validation data guides checkpoint selection. The selected checkpoint is then evaluated on the held-out synthetic test split. LOCO subset-1 has been filtered to the pallet-truck class, mapped to `pallet-jack`, and converted from COCO to YOLO labels solely to use Ultralytics validation. Its real-image evaluation is reported separately from the synthetic held-out test. Dataset provenance and counts are documented in [`docs/data.md`](docs/data.md).
 
 ### Experimental design and what the metrics mean
 
@@ -82,7 +82,7 @@ Frames are split within each generation condition using a fixed seed, so every c
 
 Precision reflects how many predicted boxes are correct at the metric's operating point; recall reflects how many labeled objects are detected. `mAP50` summarizes average precision at an intersection-over-union (IoU) threshold of 0.50. `mAP50–95` averages that measure over IoU thresholds from 0.50 through 0.95, so it rewards tighter localization as well as detection. For this one-class project, “mean” is over the pallet-jack class. These scores are useful for comparing detector behavior on this dataset, but they do not replace testing under real camera, lighting, background, and occlusion conditions.
 
-## Baseline results
+## Experiment 1 results
 
 The current baseline used `yolo26n.pt`, seed 42, 100 epochs, a 640 input size, and batch size 16. The selected checkpoint is `best.pt`, chosen using validation mAP50-95. In this run, its best validation mAP50-95 was **0.79183 at epoch 89**. At that epoch, validation precision was **0.93125**, recall **0.82429**, and mAP50 **0.90984**.
 
@@ -92,10 +92,11 @@ The model was evaluated on the held-out synthetic test split after checkpoint se
 | --- | ---: | ---: | ---: | ---: | ---: |
 | Validation, best checkpoint at epoch 89 | 500 | 0.9313 | 0.8243 | 0.9098 | 0.7918 |
 | Held-out synthetic test | 500 | 0.9248 | 0.8087 | 0.9059 | 0.7861 |
+| LOCO subset-1 real evaluation | 1,075 | 0.4113 | 0.1768 | 0.1430 | 0.0600 |
 
 **Reading the test examples:** one close-up frame (`1006.png`) may initially look like a mislabeled warehouse prop because the pallet jack is cropped and fills most of the image. On review, it is a pallet jack; its large box reflects the close camera view. The automated validator checks annotation structure and box geometry, while visual review helps confirm object identity. The reported metrics measure performance against the exported synthetic labels and should be interpreted as synthetic-test results, not real-world accuracy.
 
-These synthetic-only results do not measure performance on real photos: all 5,000 frames come from Isaac Sim. A public labeled LOCO subset is now staged locally, but it has not yet been processed into the project's one-class evaluation set or evaluated with the model. Report those real-image results separately when available. Future model changes should be judged on a fresh untouched test set or independent evaluation set.
+The LOCO row is a separate real-image evaluation: 1,075 COCO-listed images, 594 pallet-jack boxes, 403 positive images, and 672 negative images. The 65 JPGs missing from the COCO image records were excluded. This is evidence of a substantial synthetic-to-real performance gap on this selected logistics subset, but it is not a broad real-world benchmark or evidence of deployment readiness. The source is an official validation subset, and annotations need broader visual auditing; do not tune the model against this set and then describe it as an untouched final test. Future claims should use a broader independently labeled real-world test set.
 
 ### Training losses and validation metrics
 
@@ -130,7 +131,7 @@ The label montage shows the expected annotations; the prediction montage shows w
 | --- | --- |
 | ![Ground-truth boxes on validation images](docs/assets/baseline/validation-ground-truth.jpg) | ![Predicted boxes on validation images](docs/assets/baseline/validation-predictions.jpg) |
 
-### Held-out test-set results
+### Held-out synthetic test results
 
 The test precision-recall curve and confusion matrices below were generated after training and checkpoint selection. The normalized matrix is useful for class-wise proportions; the raw-count matrix is included for inspection, but its object-detection background row/column should not be interpreted as a simple count of false-positive images. The montages are a small qualitative sample, not a substitute for the reported aggregate metrics.
 
@@ -148,6 +149,20 @@ The test precision-recall curve and confusion matrices below were generated afte
 | Test ground-truth boxes | Test model predictions |
 | --- | --- |
 | ![Ground-truth boxes on held-out test images](docs/assets/test/test-ground-truth.jpg) | ![Predicted boxes on held-out test images](docs/assets/test/test-predictions.jpg) |
+
+### Separate real-image evaluation: LOCO subset-1
+
+The YOLO26n checkpoint trained on Isaac Sim data was evaluated against the LOCO subset-1 COCO pallet-truck boxes after class filtering and COCO-to-YOLO conversion. The precision-recall curve and normalized confusion matrix summarize this separate set; the image pair shows a sample of the ground truth and predictions.
+
+![LOCO real-image precision-recall curve](docs/assets/real-loco/precision-recall.png)
+
+![Normalized LOCO real-image confusion matrix](docs/assets/real-loco/confusion-matrix-normalized.png)
+
+| LOCO ground-truth boxes | LOCO model predictions |
+| --- | --- |
+| ![LOCO ground-truth boxes](docs/assets/real-loco/evaluation-ground-truth.jpg) | ![LOCO model predictions](docs/assets/real-loco/evaluation-predictions.jpg) |
+
+The low real-set scores indicate that this synthetic-trained baseline transfers poorly to these LOCO images. They do not identify the cause by themselves: appearance/domain shift, annotation differences, class mapping, and confidence/IoU behavior can all contribute. See [evaluation notes](docs/evaluation.md) for the exact settings and limits.
 
 ## Dataset and annotation format
 
@@ -234,7 +249,7 @@ The processing step preserves raw inputs and uses the scenario names recorded in
 
 ### Explore data preparation interactively
 
-Open [`notebooks/data_processing.ipynb`](notebooks/data_processing.ipynb) for a guided, visual walkthrough of both the synthetic KITTI-to-YOLO pipeline and LOCO COCO filtering. The notebook’s write steps are off by default; turn them on only when you intend to generate or replace processed data.
+Open [`notebooks/data_processing.ipynb`](notebooks/data_processing.ipynb) for a guided, visual walkthrough of the synthetic KITTI-to-YOLO pipeline and the real LOCO COCO filtering and COCO-to-YOLO evaluation adapter. The notebook’s write steps are off by default; turn them on only when you intend to generate or replace processed data.
 
 ### 4. Preflight and train
 
@@ -260,14 +275,14 @@ The interactive notebook reads a selected run from `runs/detect/`, plots trainin
 
 ```bash
 python -m ipykernel install --user --name palletjack-detection --display-name "Python (Pallet Jack Detection)"
-jupyter lab notebooks/01_explore_training_results.ipynb
+jupyter lab notebooks/explore_training_results.ipynb
 ```
 
 Choose the `Python (Pallet Jack Detection)` kernel in Jupyter if needed. Update `RUN_NAME` in the first code cell to inspect another experiment. Optional real-photo inference and training-launch cells are off by default and require explicit opt-in. More details are in [training setup](docs/training.md).
 
 ### 6. Evaluate the held-out synthetic test split
 
-Run this once the checkpoint is selected. The script uses `split: test` from the dataset YAML, records the metrics as JSON, saves plots and sample predictions, and protects existing run folders from overwrite. Use a new `--name` for a distinct evaluation run.
+For Experiment 1, this was run once the checkpoint was selected. The script uses `split: test` from the dataset YAML, records the metrics as JSON, saves plots and sample predictions, and protects existing run folders from overwrite. Use a new `--name` for a distinct evaluation run.
 
 ```bash
 python scripts/evaluate_test_set.py --device 0 --name palletjack-detection-yolo26n-seed42-test-reproduction
@@ -275,7 +290,22 @@ python scripts/evaluate_test_set.py --device 0 --name palletjack-detection-yolo2
 
 Omit `--device 0` for automatic device selection, or use `--device cpu`. Results are written under `runs/detect/<name>/`. See [evaluation notes](docs/evaluation.md) for the measured baseline and interpretation.
 
-### 7. Visualize predictions on images
+### 7. Convert LOCO COCO annotations and evaluate the real subset
+
+The filtered COCO annotations remain the source of truth. This adapter writes normalized YOLO label files for each COCO-listed image, including empty files for negatives, and creates an Ultralytics dataset YAML. It does not alter the COCO JSON or images.
+
+```bash
+python scripts/convert_coco_to_yolo.py
+python scripts/evaluate_test_set.py \
+  --model runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt \
+  --dataset data/processed/real-pallet-jack-data/dataset.yaml \
+  --name palletjack-detection-yolo26n-seed42-real-loco-subset1 \
+  --device 0
+```
+
+The converter refuses to replace existing generated outputs unless `--overwrite` is supplied. The evaluation run writes metrics and Ultralytics plots under `runs/detect/palletjack-detection-yolo26n-seed42-real-loco-subset1/`. See [evaluation notes](docs/evaluation.md) for the measured results and interpretation.
+
+### 8. Visualize predictions on images
 
 Use this command on a single image or a folder. The source images remain unchanged; annotated copies go to the output folder. This is visual inspection only and does not compute accuracy for unlabeled photos.
 
@@ -290,7 +320,7 @@ Add photos to the local `local/real-images/` folder. It is gitignored. For confi
 
 ## Model evaluation: what is and is not measured
 
-Training curves and the first set of figures come from validation, which is used during training and checkpoint selection. The second set of figures and the test metrics come from the held-out synthetic test split. Quantitative real-photo metrics still require labeled real images; unlabeled photos support visual review only. Compare synthetic and real metrics only after both sets have ground-truth boxes and are evaluated consistently. Isaac Sim integration and simulator-side performance checks come after that.
+Training curves and the first set of figures come from validation, which is used during training and checkpoint selection. The second set of figures and test metrics come from the held-out synthetic test split. LOCO real-image metrics are now available using COCO ground truth converted to YOLO label files for the same Ultralytics evaluator. The two dataset results are listed separately because the LOCO subset has different provenance, domain, and annotation review status. Isaac Sim integration and simulator-side performance checks remain future work.
 
 See [evaluation notes](docs/evaluation.md) and [Isaac Sim integration notes](docs/isaac-sim-integration.md) for the planned work and reporting guidance.
 
@@ -303,7 +333,7 @@ data/processed/             Local splits, copied images, labels (ignored)
 docs/                       Workflow guides and small demonstration figures/video
 local/                      Machine-local inputs and scratch data (ignored)
 models/                     Model weights (ignored)
-notebooks/                  Interactive training-results exploration
+notebooks/                  Interactive data preparation and training-results exploration
 runs/                       Training and prediction outputs (ignored)
 scripts/                    Command-line entry points
 simulation/                 Isaac Sim synthetic-data resources and scripts
@@ -320,6 +350,8 @@ python -m unittest discover -s tests -v
 ```
 
 ## Detailed documentation
+
+- [Experiment 1 record: data, checkpoint, metrics, and figures](docs/experiments/experiment-01.md)
 
 - [Data preparation and dataset details](docs/data.md)
 - [Training configuration and Jupyter notebook](docs/training.md)

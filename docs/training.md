@@ -1,5 +1,9 @@
 # Training
 
+## First model training run
+
+The completed first model run is **Experiment 1 (`EXP-001`)**. It fine-tuned `yolo26n.pt` on the 4,000-image synthetic training split using seed 42, 100 epochs, 640 input size, and batch size 16. The selected checkpoint is `runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt` (best validation mAP50–95 at epoch 89). The exact config and run artifacts are listed in the [Experiment 1 record](experiments/experiment-01.md). The LOCO images were not used for training.
+
 This stage fine-tunes a pretrained Ultralytics YOLO detector on the prepared synthetic dataset. It assumes the data-preparation workflow has already created `data/processed/dataset.yaml` and the `images/train`, `images/val`, and `labels/` directories. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
 
 ## Training environment
@@ -39,20 +43,20 @@ python scripts/train_yolo.py --config configs/train_yolo.yaml
 
 For a short first run, temporarily set `epochs` to a small value, `workers` to `0`, and choose an unused run `name`. Adjust `batch` to fit the available hardware; `-1` enables Ultralytics automatic batch sizing. `device: null` leaves device selection to Ultralytics; use a value such as `cpu` or `0` to select a device explicitly.
 
-Ultralytics writes checkpoints, metrics, logs, and plots beneath the configured `project/name` directory (by default, `runs/detect/palletjack-yolo26n-seed42/`). The run directory also receives `training_config.yaml`, a copy of the dataset YAML with its root resolved, and `runtime_metadata.json` with Python, Ultralytics, and PyTorch versions. These generated artifacts remain excluded from Git.
+For Experiment 1, Ultralytics wrote checkpoints, metrics, logs, and plots beneath the configured `project/name` directory (the Experiment 1 run folder `runs/detect/palletjack-detection-yolo26n-seed42/`). The run directory also receives `training_config.yaml`, a copy of the dataset YAML with its root resolved, and `runtime_metadata.json` with Python, Ultralytics, and PyTorch versions. These generated artifacts remain excluded from Git.
 
-The real-image prediction visualizer is available as a separate command. Quantitative held-out synthetic test evaluation, quantitative real-photo evaluation with labeled images, and Isaac Sim inference remain separate later stages.
+The Experiment 1 held-out synthetic test and LOCO real-image diagnostic were run separately after training. Their metrics and plots are labeled in [the Experiment 1 evaluation record](experiments/experiment-01.md). Prediction visualization and Isaac Sim inference remain separate workflows.
 
-## Explore a saved run in Jupyter
+## Explore training results in Jupyter
 
-The notebook at `notebooks/01_explore_training_results.ipynb` lets you select a saved run and inspect its per-epoch losses and validation metrics, precision–recall curve, confusion matrices, and ground-truth-versus-prediction images. It does not use the held-out test split.
+The Experiment 1 notebook at `notebooks/explore_training_results.ipynb` lets you select a saved run and inspect its per-epoch losses and validation metrics, precision–recall curve, confusion matrices, and ground-truth-versus-prediction images. It does not use the held-out test split.
 
 Install the notebook dependencies from the project's single requirements file if needed. Register the active virtual environment as a Jupyter kernel once, then start JupyterLab from the repository root:
 
 ```bash
 python -m pip install -r requirements.txt
 python -m ipykernel install --user --name palletjack-detection --display-name "Python (Pallet Jack Detection)"
-jupyter lab notebooks/01_explore_training_results.ipynb
+jupyter lab notebooks/explore_training_results.ipynb
 ```
 
 In JupyterLab, select the `Python (Pallet Jack Detection)` kernel if it is not selected automatically. This keeps notebook code running in the environment where the project dependencies and trained-model support are installed.

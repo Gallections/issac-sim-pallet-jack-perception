@@ -57,12 +57,13 @@ class DataProcessingNotebookTests(unittest.TestCase):
             "process_raw_export_from_manifests",
             "filter_coco_to_pallet_jack",
             "prepare_loco_pallet_jack_dataset",
+            "convert_coco_dataset_to_yolo",
         ):
             self.assertIn(function_name, self.code)
 
     def test_data_writing_requires_explicit_notebook_opt_in(self) -> None:
         tree = ast.parse(self.code)
-        guarded_names = {"RUN_SYNTHETIC_PROCESSING", "RUN_REAL_DATA_PROCESSING"}
+        guarded_names = {"RUN_SYNTHETIC_PROCESSING", "RUN_REAL_DATA_PROCESSING", "RUN_REAL_YOLO_CONVERSION"}
         guarded_calls: dict[str, set[str]] = {name: set() for name in guarded_names}
         for node in ast.walk(tree):
             if not isinstance(node, ast.If) or not isinstance(node.test, ast.Name):
@@ -80,6 +81,8 @@ class DataProcessingNotebookTests(unittest.TestCase):
         self.assertIn("prepare_loco_pallet_jack_dataset", guarded_calls["RUN_REAL_DATA_PROCESSING"])
         self.assertIn("RUN_SYNTHETIC_PROCESSING = False", self.code)
         self.assertIn("RUN_REAL_DATA_PROCESSING = False", self.code)
+        self.assertIn("convert_coco_dataset_to_yolo", guarded_calls["RUN_REAL_YOLO_CONVERSION"])
+        self.assertIn("RUN_REAL_YOLO_CONVERSION = False", self.code)
 
 
 if __name__ == "__main__":

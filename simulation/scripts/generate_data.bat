@@ -5,13 +5,17 @@ setlocal
 REM Isaac Sim installation path
 set "ISAAC_SIM_PATH=C:\Issac-Sim"
 
-REM Repository paths
-set "REPO_PATH=%~dp0.."
-set "SCRIPT_PATH=%REPO_PATH%\palletjack_sdg\standalone_palletjack_sdg.py"
+REM Resolve paths from this batch file, so it works regardless of the current directory.
+set "SCRIPT_DIR=%~dp0"
+for %%I in ("%SCRIPT_DIR%..\..") do set "REPO_ROOT=%%~fI"
 
-set "OUTPUT_WAREHOUSE=%REPO_PATH%\palletjack_sdg\palletjack_data\distractors_warehouse"
-set "OUTPUT_ADDITIONAL=%REPO_PATH%\palletjack_sdg\palletjack_data\distractors_additional"
-set "OUTPUT_NO_DISTRACTORS=%REPO_PATH%\palletjack_sdg\palletjack_data\no_distractors"
+set "SCRIPT_PATH=%SCRIPT_DIR%palletjack_sdg\standalone_palletjack_sdg.py"
+
+REM Keep this dataset separate from the existing Experiment 1 data in data\raw.
+set "OUTPUT_ROOT=%REPO_ROOT%\data\raw\experiment-02"
+set "OUTPUT_WAREHOUSE=%OUTPUT_ROOT%\distractors_warehouse"
+set "OUTPUT_ADDITIONAL=%OUTPUT_ROOT%\distractors_additional"
+set "OUTPUT_NO_DISTRACTORS=%OUTPUT_ROOT%\no_distractors"
 
 REM Verify required files exist
 if not exist "%ISAAC_SIM_PATH%\python.bat" (
