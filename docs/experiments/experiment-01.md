@@ -80,8 +80,8 @@ Run output: `runs/detect/palletjack-detection-yolo26n-seed42-real-loco-subset1/`
 
 The local gallery draws stored ground-truth boxes and is intended for label review. Ultralytics validation montages draw ground truth and predictions separately; do not confuse those prediction overlays with the annotation-audit gallery.
 
-## Interpretation and boundary for Experiment 2
+## Relationship to Experiment 2
 
 Experiment 1 shows strong performance on its held-out synthetic frames and much weaker performance on the LOCO subset. LOCO includes pallet-truck appearances and scales that may differ from the Isaac Sim asset. The aggregate real score alone cannot distinguish visual domain shift, object-design mismatch, annotation issues, or other causes.
 
-The next experiment may add a larger pallet-jack asset to Isaac Sim. Preserve Experiment 1's source data, checkpoint, plots, and metrics as the baseline. Change the synthetic asset mix while keeping the model initialization, training settings, and synthetic test protocol fixed. If LOCO images inform asset design or model choices, do not present the same images as an untouched final test; reserve an independent real-image holdout for the final comparison.
+Experiment 2 now adds two local USDZ variants to the Isaac Sim asset mix while retaining this experiment's data, checkpoint, plots, and metrics as the baseline. Its [separate record](experiment-02.md) documents the asset and data changes, preparation, and planned comparison. Since LOCO informed this design change, keep its Experiment 2 evaluation diagnostic; use an independent real-image holdout for any final transfer claim.

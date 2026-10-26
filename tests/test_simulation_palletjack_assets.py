@@ -62,7 +62,7 @@ class ResolveLocalPalletjackUsdzPathsTests(unittest.TestCase):
             with self.assertRaisesRegex(FileNotFoundError, "electric_pallet_jack.usdz"):
                 resolve_local_palletjack_usdz_paths(script_path)
 
-    def test_local_usdz_instances_use_requested_one_point_five_scale(self) -> None:
+    def test_local_usdz_instances_use_requested_one_point_nine_scale(self) -> None:
         script_path = SDG_SCRIPT_DIR / "standalone_palletjack_sdg.py"
         syntax_tree = ast.parse(script_path.read_text(encoding="utf-8"))
         local_pose_calls = []
@@ -98,7 +98,7 @@ class ResolveLocalPalletjackUsdzPathsTests(unittest.TestCase):
                 if keyword.arg == "scale"
             )
             self.assertIsInstance(scale_argument, ast.Constant)
-            self.assertEqual(scale_argument.value, 1.5)
+            self.assertEqual(scale_argument.value, 1.9)
 
     def test_original_and_randomized_local_material_variants_alternate_by_frame(self) -> None:
         script_path = SDG_SCRIPT_DIR / "standalone_palletjack_sdg.py"

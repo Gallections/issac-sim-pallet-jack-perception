@@ -21,7 +21,9 @@ The three Experiment 1 source collections were generated at 960x544 and are reta
 
 For each frame, Replicator samples a camera pose, pallet-jack placement and rotation, lighting values, and floor/wall material properties. The pallet-jack USD assets are tagged with the semantic class `palletjack`, which is used by the KITTI writer to produce annotations automatically. The resulting frames are independent randomized scene states, not consecutive samples from a continuous camera trajectory.
 
-Experiment 2 also loads the local USDZ variants from `assets/pallet_jacks/experiment-02/`. Each local model has an original-material instance and a color-randomized instance; Replicator alternates which appearance is visible across frames so the imported textures are represented alongside randomized appearances. Both local variants use a fixed 1.5x scale multiplier. NVIDIA's pallet-jack assets retain their original 0.01 scale conversion and existing color randomization.
+Experiment 2 (`EXP-002`) also loads the local USDZ variants from `assets/pallet_jacks/experiment-02/`: `electric_pallet_jack.usdz` and `pallet_jack_advanced.usdz`. Each local model has an original-material instance and a color-randomized instance; Replicator alternates which appearance is visible across frames so imported textures appear alongside randomized appearances. Both local variants use a fixed 1.9x scale multiplier. NVIDIA's pallet-jack assets retain their original 0.01 scale conversion and existing color randomization. The USDZ files are machine-local assets and are not committed.
+
+The render setting `/omni/replicator/RTSubframes` is set to `10` to reduce intermittent transparent-black RGB frames observed during generation. This improves render settling at a runtime cost, but it does not guarantee every output is valid; the generated files were still scanned and invalid RGB frames were removed with their paired KITTI labels. See the [Experiment 2 record](../docs/experiments/experiment-02.md) for the exact cleanup and dataset counts.
 
 The generated sample frames and walkthrough video are linked in the [main README](../README.md#how-the-synthetic-data-is-generated).
 
@@ -31,7 +33,7 @@ The generated sample frames and walkthrough video are linked in the [main README
 
 ## Handoff to the perception pipeline
 
-These three raw collections are the synthetic source data for Experiment 1 (`EXP-001`); their processed train/validation/test split and model results are indexed in the [Experiment 1 record](../docs/experiments/experiment-01.md). The real LOCO images were used only for the separate external evaluation and were not part of synthetic model training.
+These three raw collections are the original synthetic source data for Experiment 1 (`EXP-001`); their processed train/validation/test split and model results are indexed in the [Experiment 1 record](../docs/experiments/experiment-01.md). Experiment 2 (`EXP-002`) generated a separate collection with the additional local assets, under `data/raw/experiment-02/`; its data preparation and next steps are summarized in the [Experiment 2 record](../docs/experiments/experiment-02.md). The real LOCO images were used only for the separate external evaluation and were not part of synthetic model training.
 
 
 The generator exports the source dataset; it does not perform splitting, YOLO conversion, model training, or model evaluation. Those steps are separate commands documented in the [main README](../README.md) and [data preparation guide](../docs/data.md). Raw exports should be retained so processed splits and labels can be regenerated.

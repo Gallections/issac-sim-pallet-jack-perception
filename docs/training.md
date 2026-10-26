@@ -6,14 +6,14 @@ The completed first model run is **Experiment 1 (`EXP-001`)**. It fine-tuned `yo
 
 This stage fine-tunes a pretrained Ultralytics YOLO detector on a prepared synthetic dataset. The default Experiment 1 configuration reads `data/processed/experiment-01/dataset.yaml` and its `images/train`, `images/val`, and `labels/` directories. Experiment 2 has its own `configs/train_yolo_experiment-02.yaml`, which points to `data/processed/experiment-02/dataset.yaml`. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
 
-Once Experiment 2 data has been prepared, validate and launch it with the dedicated configuration:
+Experiment 2's raw dataset preparation is complete and its configuration has passed preflight. Training has not started. To rerun preflight and launch the first planned run, initialized from `yolo26n.pt`, use:
 
 ```bash
 python scripts/train_yolo.py --config configs/train_yolo_experiment-02.yaml --validate-only
 python scripts/train_yolo.py --config configs/train_yolo_experiment-02.yaml
 ```
 
-Its outputs go under `runs/detect/experiment-02/`, separate from Experiment 1's run directory.
+The first run writes under `runs/detect/experiment-02/palletjack-detection-yolo26n-seed42/`, separate from Experiment 1's run directory. The planned comparison includes a second run initialized from Experiment 1's `best.pt` checkpoint. That run needs its own config/run name so it cannot overwrite or resume the first. Keep the Experiment 2 train/validation/test split fixed between both runs, then report held-out Experiment 2 synthetic test metrics for both. Re-evaluate on Experiment 1's synthetic test split to check regression, and report any LOCO comparison as diagnostic because those images informed the motivation for adding asset variants. No Experiment 2 metrics exist yet; see the [Experiment 2 record](experiments/experiment-02.md).
 
 ## Training environment
 

@@ -10,16 +10,16 @@ The repository keeps the work in distinct stages: simulator-based synthetic data
 - **Synthetic source data:** 5,000 independently randomized rendered frames from a shared Isaac Sim warehouse environment, across three conditions.
 - **Dataset splits:** 4,000 train, 500 validation, and 500 held-out test images (80/10/10, seed 42).
 - **Baseline:** fine-tuned Ultralytics YOLO26n, 100 epochs, 640-pixel model input, batch size 16.
-- **Current state:** data preparation, training, prediction visualization, an interactive results notebook, and held-out synthetic test evaluation are available. The LOCO subset-1 real-image data has been filtered, converted from COCO to YOLO evaluation labels, and evaluated separately with the synthetic-trained checkpoint.
+- **Current state:** Experiment 1 is the completed baseline. Experiment 2 has a new Isaac Sim asset mix, cleaned raw exports, reproducible split manifests, a processed YOLO dataset, and a passing training preflight; its training and evaluation have not started. LOCO subset-1 was evaluated separately for Experiment 1.
 - **Not yet complete:** a broader, independently audited real-image benchmark and Isaac Sim inference integration.
 
 ## Why this project matters
 
 This project tests a practical sim-to-real research question: **can pallet-jack examples generated in Isaac Sim provide useful training data for an object detector, and how well does the resulting detector perform on unseen scenes?** Synthetic generation makes it possible to create varied, automatically annotated examples without manually labeling every frame. That can reduce the cost of building an initial perception dataset and makes controlled scenario variation possible.
 
-The current experiment is an initial, reproducible synthetic-data baseline. The model is fine-tuned outside Isaac Sim and evaluated on a held-out synthetic split. Its results show performance on unseen samples from the same synthetic data collection—not real-world accuracy, robustness to deployment conditions, or readiness for a robot. Those claims require separately sourced and labeled real images, followed by integration and testing in the target system.
+Experiment 1 is the initial, reproducible synthetic-data baseline. Its model was fine-tuned outside Isaac Sim and evaluated on a held-out synthetic split. Experiment 2 changes the pallet-jack asset mix to address appearance and scale differences highlighted by the separate LOCO diagnostic. Experiment 2 has not been trained yet, so no comparison or improvement claim is available. Experiment 1 results show performance on unseen samples from the same synthetic data collection—not real-world accuracy, robustness to deployment conditions, or readiness for a robot.
 
-The research contribution at this stage is the documented end-to-end method and its baseline measurement: controlled synthetic scene variation, automatically generated labels, a reproducible data-preparation and split process, external fine-tuning, and held-out evaluation. The current result is a starting point for later comparisons. It now measures synthetic-to-real transfer on the selected LOCO subset, but does not quantify which randomization choices help most or show that synthetic training data can replace real data.
+The research contribution at this stage is the documented end-to-end method and its baseline measurement: controlled synthetic scene variation, automatically generated labels, a reproducible data-preparation and split process, external fine-tuning, and held-out evaluation. Experiment 1 also measures synthetic-to-real transfer on the selected LOCO subset, but it does not quantify which randomization choices help most or show that synthetic training data can replace real data. Experiment 2 is intended to test an asset-mix change; its impact remains unknown until training and evaluation are complete.
 
 ## Research workflow
 
@@ -83,6 +83,8 @@ Frames are split within each generation condition using a fixed seed, so every c
 Precision reflects how many predicted boxes are correct at the metric's operating point; recall reflects how many labeled objects are detected. `mAP50` summarizes average precision at an intersection-over-union (IoU) threshold of 0.50. `mAP50–95` averages that measure over IoU thresholds from 0.50 through 0.95, so it rewards tighter localization as well as detection. For this one-class project, “mean” is over the pallet-jack class. These scores are useful for comparing detector behavior on this dataset, but they do not replace testing under real camera, lighting, background, and occlusion conditions.
 
 ## Experiment 1 results
+
+This section reports Experiment 1 (`EXP-001`) only. Experiment 2 has its own [record](docs/experiments/experiment-02.md); it is not included in these metrics or figures.
 
 The current baseline used `yolo26n.pt`, seed 42, 100 epochs, a 640 input size, and batch size 16. The selected checkpoint is `best.pt`, chosen using validation mAP50-95. In this run, its best validation mAP50-95 was **0.79183 at epoch 89**. At that epoch, validation precision was **0.93125**, recall **0.82429**, and mAP50 **0.90984**.
 
@@ -164,9 +166,9 @@ The YOLO26n checkpoint trained on Isaac Sim data was evaluated against the LOCO 
 
 The low real-set scores indicate that this synthetic-trained baseline transfers poorly to these LOCO images. They do not identify the cause by themselves: appearance/domain shift, annotation differences, class mapping, and confidence/IoU behavior can all contribute. See [evaluation notes](docs/evaluation.md) for the exact settings and limits.
 
-## Dataset and annotation format
+## Dataset and annotation format (Experiment 1)
 
-The local raw export contains these three scenario groups:
+Experiment 1's original raw export contains these three scenario groups:
 
 | Scenario | Frames | Current labeled instances* | Empty annotations |
 | --- | ---: | ---: | ---: |
@@ -181,7 +183,7 @@ Images are reported as 960x544. The raw folders contain RGB, object-detection la
 
 The converter reads the paired image dimensions and maps the 2D KITTI bounding box to a normalized YOLO row (`class_id center_x center_y width height`). `palletjack` is class `0`. The current KITTI maximum-edge interpretation is an inclusive-pixel working assumption; see [data preparation notes](docs/data.md) for the validation rules and this unresolved convention.
 
-The split is randomized reproducibly within each scenario. Since these frames represent independent scenes, the current first experiment uses an 80/10/10 allocation per scenario:
+Experiment 1's split is randomized reproducibly within each scenario. Since these frames represent independent scenes, it uses an 80/10/10 allocation per scenario:
 
 | Scenario | Train | Validation | Test |
 | --- | ---: | ---: | ---: |
@@ -249,7 +251,7 @@ The processing step preserves raw inputs and uses the scenario names recorded in
 
 ### Use Experiment 2 data
 
-The Isaac Sim launcher writes new exports under `data/raw/experiment-02/`, keeping Experiment 1 intact. After generation, run the same preparation stages with Experiment 2 paths:
+Experiment 2 (`EXP-002`) adds two locally supplied pallet-jack USDZ assets to the Isaac Sim scene while retaining NVIDIA's original pallet-jack asset. Its raw exports are stored under `data/raw/experiment-02/`, leaving Experiment 1 untouched. The current exports were cleaned, validated, split, and processed; see the [Experiment 2 record](docs/experiments/experiment-02.md) for exact counts and changes. The commands below reproduce that preparation after a future data regeneration. Do not use `--overwrite` unless you intend to replace existing generated manifests or processed outputs.
 
 ```bash
 python scripts/validate_dataset.py --root data/raw/experiment-02 \
@@ -269,7 +271,7 @@ python scripts/process_raw_data.py \
   --output-dir data/processed/experiment-02
 ```
 
-Train it with `configs/train_yolo_experiment-02.yaml` after processing finishes. Dataset arguments remain explicit, and the training config points at the matching Experiment 2 dataset YAML.
+The prepared dataset has passed the `--validate-only` preflight for `configs/train_yolo_experiment-02.yaml`. Training has not started. The config currently initializes from `yolo26n.pt`; a second run initialized from the Experiment 1 `best.pt` is planned for comparison and needs a distinct run name/config. Keep all future Experiment 2 results in its [experiment record](docs/experiments/experiment-02.md).
 
 If you also want a separate Experiment 2 real-image evaluation, reuse the LOCO raw source from Experiment 1 and write its processed adapter into Experiment 2:
 
@@ -393,6 +395,7 @@ python -m unittest discover -s tests -v
 ## Detailed documentation
 
 - [Experiment 1 record: data, checkpoint, metrics, and figures](docs/experiments/experiment-01.md)
+- [Experiment 2 record: changed assets, cleaned data, split, and planned comparison](docs/experiments/experiment-02.md)
 
 - [Data preparation and dataset details](docs/data.md)
 - [Training configuration and Jupyter notebook](docs/training.md)

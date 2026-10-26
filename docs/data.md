@@ -1,6 +1,6 @@
 # Data workflow
 
-The current Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). This guide explains how those raw sources map to the processed model inputs.
+The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and has not yet been used to train a model. This guide explains how those raw sources map to processed model inputs.
 
 This document records the current Isaac Sim synthetic-data export and the path into object-detection training. Synthetic inputs and experiment-specific derived outputs are isolated by experiment: Experiment 1 uses `data/raw/experiment-01/` and `data/processed/experiment-01/`; Experiment 2 uses the matching `experiment-02` folders. The LOCO source images are retained once under Experiment 1 because they were first used for its external evaluation; they can be reused as an evaluation set for later experiments without duplicating the large raw image collection.
 
@@ -92,9 +92,24 @@ The validator was run on the local export on 2026-10-18. It found no structural 
 
 Empty annotations were accepted and counted as negative frames. The clean report is evidence of file pairing and the checks above; it does not establish visual class correctness, settle the coordinate-edge convention, or validate KITTI 3D values. A later manual review of sample frames identified a possible class/box mismatch; complete a visual annotation audit before treating model metrics as reliable.
 
-## Synthetic train/validation/test split
+## Experiment 2 prepared dataset
 
-The frames are independent scenes, so the first experiment uses a seeded random split within each of the three scenario groups. The default proportions are 80% training, 10% validation, and 10% test, with random seed `42`. For the current dataset this produces:
+Experiment 2's local USDZ assets were added to the Isaac Sim generator while preserving the original NVIDIA asset. The generated RGBs include randomized appearance variants and imported-material appearances. `RTSubframes` was raised to `10` after intermittent transparent-black frames were observed; despite this, 176 fully transparent black RGB frames and their paired KITTI files were removed from the raw export.
+
+The raw export was then curated and validated. Three zero-width KITTI boxes were removed from their label files while preserving the corresponding images and all other valid boxes. The current resulting counts are:
+
+| Scenario | Images and labels | Valid objects | Empty annotations |
+|---|---:|---:|---:|
+| `distractors_additional` | 1,941 | 8,740 | 129 |
+| `distractors_warehouse` | 1,936 | 9,587 | 118 |
+| `no_distractors` | 947 | 5,017 | 54 |
+| **Total** | **4,824** | **23,344** | **301** |
+
+The prepared dataset has 3,859 training, 483 validation, and 482 test images using the same seed-42 80/10/10 per-scenario split policy. Validation and processing are complete, and `configs/train_yolo_experiment-02.yaml` passed its `--validate-only` preflight. No Experiment 2 model training or evaluation has run. See the [experiment record](experiments/experiment-02.md) for per-scenario split counts and model comparison plan.
+
+## Experiment 1 synthetic train/validation/test split
+
+Experiment 1 frames are independent scenes, so its split uses a seeded random allocation within each of the three scenario groups. The default proportions are 80% training, 10% validation, and 10% test, with random seed `42`. Experiment 1 produced:
 
 | Group | Train | Validation | Test |
 |---|---:|---:|---:|
@@ -149,7 +164,7 @@ If raw-data processing stops partway through, rerun `scripts/process_raw_data.py
 
 Use `--seed`, `--root`, `--output-dir`, and `--processed-root` to change the split seed, source root, manifest location, or recorded processed paths. The proportions can be changed with `--train-ratio`, `--validation-ratio`, and `--test-ratio`; they must be positive and sum to 1.0. Both the processor and the single-file converter accept `--exclusive-max-coordinates` if the writer convention is confirmed to use exclusive upper edges. The current default treats maximum coordinates as inclusive pixel indices; this remains a working assumption pending confirmation.
 
-For Experiment 2, pass `data/raw/experiment-02` as the source root, `data/processed/experiment-02/splits` as the manifest folder, and `data/processed/experiment-02` as the processed root. The [main README](../README.md#use-experiment-2-data) gives the full commands. Once those outputs exist, use `configs/train_yolo_experiment-02.yaml` for training.
+For Experiment 2, pass `data/raw/experiment-02` as the source root, `data/processed/experiment-02/splits` as the manifest folder, and `data/processed/experiment-02` as the processed root. The [main README](../README.md#use-experiment-2-data) gives the commands to reproduce preparation after deliberate regeneration. The current prepared dataset is already available locally and preflighted; training has not started.
 
 LOCO real photos are prepared and evaluated through a separate COCO-to-YOLO path; they are intentionally excluded from these synthetic manifests.
 
