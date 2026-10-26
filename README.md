@@ -10,7 +10,7 @@ The repository keeps the work in distinct stages: simulator-based synthetic data
 - **Synthetic source data:** 5,000 independently randomized rendered frames from a shared Isaac Sim warehouse environment, across three conditions.
 - **Dataset splits:** 4,000 train, 500 validation, and 500 held-out test images (80/10/10, seed 42).
 - **Baseline:** fine-tuned Ultralytics YOLO26n, 100 epochs, 640-pixel model input, batch size 16.
-- **Current state:** Experiment 1 is the completed baseline. Experiment 2 has a new Isaac Sim asset mix, cleaned raw exports, reproducible split manifests, a processed YOLO dataset, and a passing training preflight; its training and evaluation have not started. LOCO subset-1 was evaluated separately for Experiment 1.
+- **Current state:** Experiment 1 is the completed baseline. Experiment 2 has a new Isaac Sim asset mix, cleaned raw exports, reproducible split manifests, and a processed YOLO dataset. Its first model run has started but is not complete; no final Experiment 2 test metrics are available. LOCO subset-1 was evaluated separately for Experiment 1.
 - **Not yet complete:** a broader, independently audited real-image benchmark and Isaac Sim inference integration.
 
 ## Why this project matters
@@ -271,7 +271,7 @@ python scripts/process_raw_data.py \
   --output-dir data/processed/experiment-02
 ```
 
-The prepared dataset has passed the `--validate-only` preflight for `configs/train_yolo_experiment-02.yaml`. Training has not started. The config currently initializes from `yolo26n.pt`; a second run initialized from the Experiment 1 `best.pt` is planned for comparison and needs a distinct run name/config. Keep all future Experiment 2 results in its [experiment record](docs/experiments/experiment-02.md).
+The prepared dataset passed preflight for `configs/train_yolo_e2_pretrained.yaml`, which initializes from `yolo26n.pt`. The comparison run initialized from Experiment 1's `best.pt` has its own config, `configs/train_yolo_e2_exp01-best.yaml`, and distinct run name. Keep both runs and their future results in the [Experiment 2 record](docs/experiments/experiment-02.md).
 
 If you also want a separate Experiment 2 real-image evaluation, reuse the LOCO raw source from Experiment 1 and write its processed adapter into Experiment 2:
 

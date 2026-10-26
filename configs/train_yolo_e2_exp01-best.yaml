@@ -1,0 +1,11 @@
+# Experiment 2 fine-tuning initialized from the selected Experiment 1 checkpoint.
+model: runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt
+dataset_yaml: data/processed/experiment-02/dataset.yaml
+epochs: 100
+imgsz: 640
+batch: 16
+device: null
+seed: 42
+workers: 4
+project: runs/detect/experiment-02
+name: palletjack-detection-exp01-best-seed42

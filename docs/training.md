@@ -4,16 +4,23 @@
 
 The completed first model run is **Experiment 1 (`EXP-001`)**. It fine-tuned `yolo26n.pt` on the 4,000-image synthetic training split using seed 42, 100 epochs, 640 input size, and batch size 16. The selected checkpoint is `runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt` (best validation mAP50–95 at epoch 89). The exact config and run artifacts are listed in the [Experiment 1 record](experiments/experiment-01.md). The LOCO images were not used for training.
 
-This stage fine-tunes a pretrained Ultralytics YOLO detector on a prepared synthetic dataset. The default Experiment 1 configuration reads `data/processed/experiment-01/dataset.yaml` and its `images/train`, `images/val`, and `labels/` directories. Experiment 2 has its own `configs/train_yolo_experiment-02.yaml`, which points to `data/processed/experiment-02/dataset.yaml`. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
+This stage fine-tunes an Ultralytics YOLO detector on a prepared synthetic dataset. The default Experiment 1 configuration reads `data/processed/experiment-01/dataset.yaml`. Experiment 2 uses two separate configurations, both pointed at `data/processed/experiment-02/dataset.yaml`: [`train_yolo_e2_pretrained.yaml`](../configs/train_yolo_e2_pretrained.yaml) starts from `yolo26n.pt`, while [`train_yolo_e2_exp01-best.yaml`](../configs/train_yolo_e2_exp01-best.yaml) starts from Experiment 1's selected `best.pt`. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
 
-Experiment 2's raw dataset preparation is complete and its configuration has passed preflight. Training has not started. To rerun preflight and launch the first planned run, initialized from `yolo26n.pt`, use:
+Experiment 2's raw dataset preparation is complete. The `yolo26n.pt`-initialized run has started and saved checkpoints, but has not completed training or held-out evaluation. To validate and launch that run, use:
 
 ```bash
-python scripts/train_yolo.py --config configs/train_yolo_experiment-02.yaml --validate-only
-python scripts/train_yolo.py --config configs/train_yolo_experiment-02.yaml
+python scripts/train_yolo.py --config configs/train_yolo_e2_pretrained.yaml --validate-only
+python scripts/train_yolo.py --config configs/train_yolo_e2_pretrained.yaml
 ```
 
-The first run writes under `runs/detect/experiment-02/palletjack-detection-yolo26n-seed42/`, separate from Experiment 1's run directory. The planned comparison includes a second run initialized from Experiment 1's `best.pt` checkpoint. That run needs its own config/run name so it cannot overwrite or resume the first. Keep the Experiment 2 train/validation/test split fixed between both runs, then report held-out Experiment 2 synthetic test metrics for both. Re-evaluate on Experiment 1's synthetic test split to check regression, and report any LOCO comparison as diagnostic because those images informed the motivation for adding asset variants. No Experiment 2 metrics exist yet; see the [Experiment 2 record](experiments/experiment-02.md).
+The first run writes under `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42/`. The second run has a separate config and run name so its checkpoints cannot overwrite the first. When ready to start it, preflight and launch with:
+
+```bash
+python scripts/train_yolo.py --config configs/train_yolo_e2_exp01-best.yaml --validate-only
+python scripts/train_yolo.py --config configs/train_yolo_e2_exp01-best.yaml
+```
+
+It writes under `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42/`. Keep the Experiment 2 train/validation/test split fixed between both runs, then report held-out Experiment 2 synthetic test metrics for both. Re-evaluate on Experiment 1's synthetic test split to check regression, and report any LOCO comparison as diagnostic because those images informed the motivation for adding asset variants. No final Experiment 2 evaluation metrics exist yet; see the [Experiment 2 record](experiments/experiment-02.md).
 
 ## Training environment
 

@@ -68,11 +68,29 @@ class ExperimentDataLayoutTests(unittest.TestCase):
 
     def test_experiment_02_training_config_uses_experiment_02_dataset_and_run_root(self) -> None:
         values = yaml.safe_load(
-            (PROJECT_ROOT / "configs" / "train_yolo_experiment-02.yaml").read_text(encoding="utf-8")
+            (PROJECT_ROOT / "configs" / "train_yolo_e2_pretrained.yaml").read_text(encoding="utf-8")
         )
 
         self.assertEqual(values["dataset_yaml"], "data/processed/experiment-02/dataset.yaml")
         self.assertEqual(values["project"], "runs/detect/experiment-02")
+        self.assertEqual(values["name"], "palletjack-detection-yolo26n-pretrained-seed42")
+
+    def test_experiment_02_exp01_checkpoint_run_has_distinct_initialization_and_name(self) -> None:
+        values = yaml.safe_load(
+            (PROJECT_ROOT / "configs" / "train_yolo_e2_exp01-best.yaml").read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(
+            values["model"],
+            "runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt",
+        )
+        self.assertEqual(values["dataset_yaml"], "data/processed/experiment-02/dataset.yaml")
+        self.assertEqual(values["project"], "runs/detect/experiment-02")
+        self.assertEqual(values["name"], "palletjack-detection-exp01-best-seed42")
+        self.assertEqual(values["epochs"], 100)
+        self.assertEqual(values["imgsz"], 640)
+        self.assertEqual(values["batch"], 16)
+        self.assertEqual(values["seed"], 42)
 
 
 if __name__ == "__main__":

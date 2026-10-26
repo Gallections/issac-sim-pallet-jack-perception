@@ -3,7 +3,7 @@
 ## Purpose and status
 
 **Experiment ID:** `EXP-002`  
-**Status:** synthetic data generated and prepared; training and evaluation have not started.
+**Status:** synthetic data generated and prepared; Experiment 2 training has started, but neither training run has a completed held-out evaluation yet.
 
 Experiment 2 investigates whether adding larger and visually different pallet-jack assets to the synthetic scene improves the model's ability to detect the pallet-jack appearances that were weakly detected in the separate LOCO real-image diagnostic. It preserves Experiment 1 as the baseline and gives all new raw data, processed data, and future model runs an experiment-specific location.
 
@@ -57,12 +57,14 @@ The same seed `42` and 80/10/10 per-scenario policy used in Experiment 1 was app
 
 Processed images, preserved KITTI labels, YOLO labels, split manifests, and dataset YAML are under `data/processed/experiment-02/`. These generated data are local and gitignored. The preprocessing and converter behavior are documented in [`docs/data.md`](../data.md).
 
+The local ground-truth audit gallery is at `local/annotation_audit/experiment-02/index.html`; open `local/annotation_audit/index.html` for the experiment-separated landing page. It displays the stored YOLO boxes in green for all splits and scenarios, without running model inference or copying the source images. Regenerate it with `python scripts/build_annotation_audit.py` after the processed dataset changes.
+
 ## Planned training comparison
 
 Two models are planned on the same Experiment 2 split and training settings:
 
-1. **Fresh pretrained initialization:** `yolo26n.pt`, using [`configs/train_yolo_experiment-02.yaml`](../../configs/train_yolo_experiment-02.yaml).
-2. **Experiment 1 continuation:** initialize from `runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt`. This needs a separate training config and unique run name before launch.
+1. **Fresh pretrained initialization:** `yolo26n.pt`, using [`configs/train_yolo_e2_pretrained.yaml`](../../configs/train_yolo_e2_pretrained.yaml). Its run name is `palletjack-detection-yolo26n-pretrained-seed42`.
+2. **Experiment 1 checkpoint initialization:** [`configs/train_yolo_e2_exp01-best.yaml`](../../configs/train_yolo_e2_exp01-best.yaml) initializes from `runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt` and writes to the distinct run `palletjack-detection-exp01-best-seed42`.
 
 Both planned runs use 100 epochs, 640 input size, batch size 16, seed 42, four workers, and automatic device selection unless intentionally changed and documented. The Experiment 2 config passed `--validate-only` against the prepared dataset. This confirms its dataset paths and settings; it does not load a model or start training.
 
@@ -70,4 +72,4 @@ After both runs, evaluate each selected checkpoint on the held-out Experiment 2 
 
 ## Results
 
-No Experiment 2 training run, checkpoint, held-out test evaluation, or metrics have been produced. Add the run names, actual settings, test metrics, plots, qualitative findings, and any deviations here only after those steps complete. Until then, Experiment 1 remains the only completed model result; see the [Experiment 1 record](experiment-01.md).
+The `yolo26n.pt`-initialized run has been launched and has saved `best.pt` and `last.pt`; it has not yet completed all configured epochs or its held-out test evaluation. The Experiment 1-checkpoint-initialized run is configured separately and has not been launched. Add completed run details, test metrics, plots, qualitative findings, and deviations here after evaluation. Until then, Experiment 1 remains the only completed model result; see the [Experiment 1 record](experiment-01.md).

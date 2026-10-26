@@ -8,4 +8,4 @@ device: null
 seed: 42
 workers: 4
 project: runs/detect/experiment-02
-name: palletjack-detection-yolo26n-seed42
+name: palletjack-detection-yolo26n-pretrained-seed42
