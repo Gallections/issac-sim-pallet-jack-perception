@@ -8,21 +8,21 @@ This stage fine-tunes an Ultralytics YOLO detector on a prepared synthetic datas
 
 Experiment 2's raw dataset preparation and both training runs are complete. Validation metrics were calculated each epoch and used to select each run's `best.pt`; the held-out test set was evaluated afterward in a separate command. The run configurations and results are documented in the [Experiment 2 record](experiments/experiment-02.md). The test run directories are `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42-experiment-02-test/` and `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42-experiment-02-test/`.
 
-For a future rerun with a new run name, the original preflight and training commands are:
+These are the original preflight and training commands for the `yolo26n.pt`-initialized run:
 
 ```bash
 python scripts/train_yolo.py --config configs/train_yolo_e2_pretrained.yaml --validate-only
 python scripts/train_yolo.py --config configs/train_yolo_e2_pretrained.yaml
 ```
 
-The first run writes under `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42/`. The second run has a separate config and run name so its checkpoints cannot overwrite the first. When ready to start it, preflight and launch with:
+That run wrote under `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42/`. The second completed run used a separate config and run name:
 
 ```bash
 python scripts/train_yolo.py --config configs/train_yolo_e2_exp01-best.yaml --validate-only
 python scripts/train_yolo.py --config configs/train_yolo_e2_exp01-best.yaml
 ```
 
-It writes under `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42/`. The current held-out Experiment 2 results for both initializations are reported in the [Experiment 2 record](experiments/experiment-02.md). Evaluating both checkpoints on Experiment 1's held-out synthetic test split remains a useful regression check. Report any LOCO comparison as a development diagnostic because those images motivated the asset variants.
+It wrote under `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42/`. Both completed runs were evaluated on Experiment 2's held-out synthetic test split; results are reported in the [Experiment 2 record](experiments/experiment-02.md). Evaluating both checkpoints on Experiment 1's held-out synthetic test split remains a useful regression check. Report any LOCO comparison as a development diagnostic because those images motivated the asset variants.
 
 ## Training environment
 

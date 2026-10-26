@@ -114,6 +114,41 @@ These are sample batches from the held-out test set, not manually selected best 
 
 Reproduce the test runs with `scripts/evaluate_test_set.py` and the checkpoints named above, using `data/processed/experiment-02/dataset.yaml`. The saved `test_metrics.json` records the exact settings and metrics. The separate regression check on Experiment 1's test split remains a useful next evaluation before making claims about preserving performance on the original asset mix.
 
-## Results
+## LOCO real-image diagnostic
 
-The `yolo26n.pt`-initialized run has been launched and has saved `best.pt` and `last.pt`; it has not yet completed all configured epochs or its held-out test evaluation. The Experiment 1-checkpoint-initialized run is configured separately and has not been launched. Add completed run details, test metrics, plots, qualitative findings, and deviations here after evaluation. Until then, Experiment 1 remains the only completed model result; see the [Experiment 1 record](experiment-01.md).
+Both Experiment 2 `best.pt` checkpoints were also evaluated against the same processed LOCO subset-1 adapter used for Experiment 1: 1,075 COCO-record images, 594 pallet-jack boxes across 403 positive images, and 672 negative images. The 65 extra JPG files without COCO image records were excluded. Evaluation used 640 input size, batch 16, four workers, and CUDA device 0 (NVIDIA GeForce RTX 5080 Laptop GPU). No training or label edits were performed during evaluation.
+
+| Model | Precision | Recall | mAP50 | mAP50-95 |
+|---|---:|---:|---:|---:|
+| Experiment 1 baseline (`yolo26n.pt`, prior evaluation) | 0.4113 | 0.1768 | 0.1430 | 0.0600 |
+| Experiment 2, initialized from `yolo26n.pt` | 0.3797 | 0.2828 | 0.2147 | 0.0830 |
+| Experiment 2, initialized from Experiment 1 `best.pt` | 0.3947 | 0.2525 | 0.2239 | 0.0850 |
+
+Both Experiment 2 models have higher recall and mAP than the Experiment 1 baseline on this set, alongside lower precision. However, recall remains around 0.25–0.28 and mAP50-95 remains below 0.09, so real-image detection is still weak. The two Experiment 2 initializations also trade off differently: the `yolo26n.pt` model has higher recall, while the Experiment 1-initialized model has slightly higher precision and mAP. These results are encouraging diagnostic evidence that the expanded assets may help, but they do not establish that the asset change caused the difference.
+
+LOCO subset-1 is an official validation subset, not an untouched independent test set. Its appearance and scale differences motivated Experiment 2, so using it to judge this follow-up is a development comparison with possible selection bias. The LOCO annotations have not had a comprehensive visual audit. Treat these numbers as evidence for this specific dataset and annotation adapter, not as a general real-world accuracy claim or deployment benchmark.
+
+The full outputs are under `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42-loco-subset1-exp02/` and `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42-loco-subset1-exp02/`. Selected snapshots are in `docs/assets/real-loco/experiment-02/`.
+
+### Per-image prediction audit
+
+To inspect the gap behind the aggregate metrics, predictions from both Experiment 2 checkpoints were matched against all 594 COCO-derived boxes across all 1,075 recorded images. This audit uses a fixed confidence threshold of 0.25 and one-to-one matching at IoU ≥ 0.50. These operating-point counts are not the same as the Ultralytics precision and recall above, which are reported at the evaluator's selected confidence threshold.
+
+| Initialization | Predictions | Matched boxes | Missed labeled boxes | Unmatched predictions | Positive images with misses | Positive images fully missed | Negative images with a prediction |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `yolo26n.pt` | 1,073 | 224 | 370 | 849 | 286 / 403 | 209 / 403 | 269 / 672 |
+| Experiment 1 `best.pt` | 598 | 174 | 420 | 424 | 318 / 403 | 255 / 403 | 185 / 672 |
+
+At this fixed threshold, the fresh-pretrained model finds more labeled objects, but it also produces many unmatched predictions. About 40% of LOCO's negative images have at least one prediction from that model, versus about 28% for the Experiment 1-initialized model. This quantifies the precision/recall trade-off behind the weak real-image scores; it is not a human verification that every COCO box is correct.
+
+The local per-image audit gallery is at `local/annotation_audit/experiment-02-loco-predictions/index.html` in the working copy; its CSV summary is `local/annotation_audit/experiment-02-loco-predictions/per_image_audit.csv`. Both are generated local files and are ignored by Git. The gallery shows the original image, its ground-truth boxes, and both models' predictions. Green boxes are matched labels, dashed red boxes are missed labels, blue boxes are matched predictions, and orange boxes are unmatched predictions. It covers all images, sorted with cases missed by both models first. Review the flagged images before deciding whether individual annotations need correction; this automated matching alone cannot determine label correctness or pallet-jack subtype.
+
+![LOCO subset-1 precision-recall curve for Experiment 2 pretrained initialization](../assets/real-loco/experiment-02/pretrained-pr-curve.png)
+
+![LOCO subset-1 precision-recall curve for Experiment 2 Experiment 1-checkpoint initialization](../assets/real-loco/experiment-02/exp01-initialized-pr-curve.png)
+
+| LOCO ground truth | `yolo26n.pt` predictions | Experiment 1 `best.pt` predictions |
+|---|---|---|
+| ![LOCO ground-truth pallet-jack boxes](../assets/real-loco/experiment-02/ground-truth.jpg) | ![Experiment 2 pretrained model LOCO predictions](../assets/real-loco/experiment-02/pretrained-predictions.jpg) | ![Experiment 2 Experiment 1-initialized model LOCO predictions](../assets/real-loco/experiment-02/exp01-initialized-predictions.jpg) |
+
+The reproducible evaluation command is the same `scripts/evaluate_test_set.py` used for the synthetic test set, with `--dataset data/processed/experiment-01/real-pallet-jack-data/dataset.yaml`, each model's `best.pt`, and a new output name. The resulting `test_metrics.json` files record the settings and metrics. Although the script calls its selected partition `test`, this dataset is LOCO's validation subset and must retain that provenance in reports.

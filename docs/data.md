@@ -16,11 +16,11 @@ data/
     └── experiment-02/       # Experiment 2 manifests and derived datasets
 ```
 
-The validation, split, processing, training, and evaluation defaults continue to target Experiment 1. To work on another experiment, pass its raw and processed roots to the preparation commands and select its training config. This keeps existing baseline commands reproducible and prevents a new experiment from replacing prior data. When reusing LOCO for Experiment 2, read the source from Experiment 1 and write a separate derived copy into Experiment 2's processed folder.
+The validation, split, processing, training, and evaluation defaults continue to target Experiment 1. To work on another experiment, pass its raw and processed roots to the preparation commands and select its training config. This keeps existing baseline commands reproducible and prevents a new experiment from replacing prior data. Experiment 2 reuses the processed LOCO adapter under Experiment 1, so both experiment records compare models against the same images and labels without duplicating them.
 
 ## Current synthetic source dataset inventory
 
-The local export contains three scenario groups:
+Experiment 1's local export contains three scenario groups:
 
 | Group | Frames | Description |
 |---|---:|---|
@@ -90,7 +90,7 @@ The validator was run on the local export on 2026-10-18. It found no structural 
 | `distractors_warehouse` | 2,000 | 2,000 | 5,826 | 190 |
 | `no_distractors` | 1,000 | 1,000 | 3,242 | 65 |
 
-Empty annotations were accepted and counted as negative frames. The clean report is evidence of file pairing and the checks above; it does not establish visual class correctness, settle the coordinate-edge convention, or validate KITTI 3D values. A later manual review of sample frames identified a possible class/box mismatch; complete a visual annotation audit before treating model metrics as reliable.
+Empty annotations were accepted and counted as negative frames. The clean report is evidence of file pairing and the checks above; it does not establish visual class correctness, settle the coordinate-edge convention, or validate KITTI 3D values. A close-up sample that initially looked suspicious was reviewed and confirmed to show a pallet jack; this spot check is not a full visual audit. The local annotation-audit gallery can be used to review the stored boxes across splits.
 
 ## Experiment 2 prepared dataset
 
@@ -164,7 +164,7 @@ If raw-data processing stops partway through, rerun `scripts/process_raw_data.py
 
 Use `--seed`, `--root`, `--output-dir`, and `--processed-root` to change the split seed, source root, manifest location, or recorded processed paths. The proportions can be changed with `--train-ratio`, `--validation-ratio`, and `--test-ratio`; they must be positive and sum to 1.0. Both the processor and the single-file converter accept `--exclusive-max-coordinates` if the writer convention is confirmed to use exclusive upper edges. The current default treats maximum coordinates as inclusive pixel indices; this remains a working assumption pending confirmation.
 
-For Experiment 2, pass `data/raw/experiment-02` as the source root, `data/processed/experiment-02/splits` as the manifest folder, and `data/processed/experiment-02` as the processed root. The [main README](../README.md#use-experiment-2-data) gives the commands to reproduce preparation after deliberate regeneration. The current prepared dataset is already available locally and preflighted; training has not started.
+For Experiment 2, pass `data/raw/experiment-02` as the source root, `data/processed/experiment-02/splits` as the manifest folder, and `data/processed/experiment-02` as the processed root. The [main README](../README.md#use-experiment-2-data) gives the commands to reproduce preparation after deliberate regeneration. The prepared dataset was used for both completed Experiment 2 training runs and the held-out synthetic test evaluation; see the [Experiment 2 record](experiments/experiment-02.md).
 
 LOCO real photos are prepared and evaluated through a separate COCO-to-YOLO path; they are intentionally excluded from these synthetic manifests.
 

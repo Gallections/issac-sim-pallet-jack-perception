@@ -92,3 +92,28 @@ The evaluation outputs, including `test_metrics.json`, confusion matrices, preci
 - `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42-experiment-02-test/`
 
 Small report snapshots are checked into `docs/assets/experiment-02/`. To reproduce either result, run `scripts/evaluate_test_set.py` with the corresponding `best.pt` checkpoint, `--dataset data/processed/experiment-02/dataset.yaml`, `--device 0`, `--imgsz 640`, `--batch 16`, and a new `--name`. The full metric summary stores absolute local paths, so use the documented repo-relative checkpoint and dataset locations when reproducing on another machine.
+
+## Experiment 2 LOCO real-image diagnostic
+
+The same two Experiment 2 checkpoints were evaluated on the processed LOCO subset-1 COCO adapter used for Experiment 1. This is the official LOCO validation subset. It contains 1,075 recorded images, 594 pallet-jack annotations, 403 positive images, and 672 images with no pallet-jack annotation; 65 additional JPGs without COCO records were excluded. The evaluation used 640 input size, batch 16, four workers, and CUDA device 0.
+
+| Model | Images | Boxes | Precision | Recall | mAP50 | mAP50-95 |
+|---|---:|---:|---:|---:|---:|---:|
+| Experiment 1 baseline (previous evaluation) | 1,075 | 594 | 0.4113 | 0.1768 | 0.1430 | 0.0600 |
+| Experiment 2, `yolo26n.pt` initialization | 1,075 | 594 | 0.3797 | 0.2828 | 0.2147 | 0.0830 |
+| Experiment 2, Experiment 1 `best.pt` initialization | 1,075 | 594 | 0.3947 | 0.2525 | 0.2239 | 0.0850 |
+
+Relative to the earlier Experiment 1 result, both Experiment 2 models score higher on recall and mAP, and lower on precision. The `yolo26n.pt` initialization has higher recall; the Experiment 1-checkpoint initialization has slightly higher precision and mAP. Both models still miss many labeled objects, and both mAP50-95 values remain below 0.09. Treat this as a weak real-image result with a promising but unproven improvement signal, not a deployment result.
+
+The comparison is not an independent test of Experiment 2: this LOCO subset motivated the asset change, so model and data choices were informed by it. The published summary also notes that the LOCO annotations have not received a comprehensive visual audit. This is a development diagnostic, not a general sim-to-real benchmark. See the [Experiment 2 record](experiments/experiment-02.md) for plotted results and details.
+
+### Per-image error audit at a fixed threshold
+
+The project generated an all-image comparison gallery using confidence ≥ 0.25 and one-to-one matches at IoU ≥ 0.50. This is a diagnostic operating point; it differs from Ultralytics' aggregate precision and recall, which use a selected confidence threshold.
+
+| Initialization | Matched boxes | Missed boxes | Unmatched predictions | Positive images with misses | Positive images fully missed | Negative images with any prediction |
+|---|---:|---:|---:|---:|---:|---:|
+| `yolo26n.pt` | 224 | 370 | 849 | 286 / 403 | 209 / 403 | 269 / 672 |
+| Experiment 1 `best.pt` | 174 | 420 | 424 | 318 / 403 | 255 / 403 | 185 / 672 |
+
+The fresh-pretrained model catches more labels at this confidence threshold, but makes substantially more unmatched predictions; roughly 40% of negative images trigger at least one detection. The Experiment 1-initialized model has fewer such detections but misses more labeled objects. In the local working copy, open `local/annotation_audit/experiment-02-loco-predictions/index.html` to inspect paired ground truth and predictions, or use `local/annotation_audit/experiment-02-loco-predictions/per_image_audit.csv` to sort cases by misses and false detections. These generated files are ignored by Git. The gallery supports human review; it does not prove the source annotations are correct.
