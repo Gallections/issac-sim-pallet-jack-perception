@@ -1,6 +1,6 @@
 # Data workflow
 
-The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and has not yet been used to train a model. This guide explains how those raw sources map to processed model inputs.
+The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and was used for two completed training runs. This guide explains how those raw sources map to processed model inputs.
 
 This document records the current Isaac Sim synthetic-data export and the path into object-detection training. Synthetic inputs and experiment-specific derived outputs are isolated by experiment: Experiment 1 uses `data/raw/experiment-01/` and `data/processed/experiment-01/`; Experiment 2 uses the matching `experiment-02` folders. The LOCO source images are retained once under Experiment 1 because they were first used for its external evaluation; they can be reused as an evaluation set for later experiments without duplicating the large raw image collection.
 
@@ -105,7 +105,7 @@ The raw export was then curated and validated. Three zero-width KITTI boxes were
 | `no_distractors` | 947 | 5,017 | 54 |
 | **Total** | **4,824** | **23,344** | **301** |
 
-The prepared dataset has 3,859 training, 483 validation, and 482 test images using the same seed-42 80/10/10 per-scenario split policy. Validation and processing are complete, and `configs/train_yolo_e2_pretrained.yaml` passed its `--validate-only` preflight. Experiment 2 training has started, but final test evaluation has not been completed. See the [experiment record](experiments/experiment-02.md) for per-scenario split counts and model comparison plan.
+The prepared dataset has 3,859 training, 483 validation, and 482 test images using the same seed-42 80/10/10 per-scenario split policy. Validation and processing are complete, and both training configurations passed preflight. The two trained models were validated during training and evaluated on the held-out test split. See the [experiment record](experiments/experiment-02.md) for per-scenario split counts, validation scores, and test comparison.
 
 ## Experiment 1 synthetic train/validation/test split
 

@@ -74,3 +74,21 @@ Even with verified labels, the result would be limited to held-out synthetic fra
 Once the label audit is complete and the test metrics are regenerated, avoid repeatedly consulting this test set to tune confidence thresholds or choose among many checkpoints. Use a new untouched test set or independently labeled real-image benchmark for subsequent model changes. Keep real-image results separate from synthetic results and report dataset source, label status, checkpoint, settings, and metrics together.
 
 Experiment 1 held-out test visualization snapshots are in `docs/assets/test/`; full evaluation outputs remain under ignored `runs/`.
+
+## Experiment 2 held-out synthetic test
+
+Both Experiment 2 runs completed 100 epochs, with validation metrics calculated each epoch and `best.pt` selected by validation mAP50-95. The selected checkpoint from each run was evaluated on the same Experiment 2 test split: 482 images and 2,307 labeled pallet-jack instances. Evaluation used 640 input size, batch 16, four workers, and CUDA device 0 (NVIDIA GeForce RTX 5080 Laptop GPU).
+
+| Initialization | Best validation epoch | Validation precision | Validation recall | Validation mAP50 | Validation mAP50-95 | Test precision | Test recall | Test mAP50 | Test mAP50-95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `yolo26n.pt` | 84 | 0.9116 | 0.7809 | 0.8750 | 0.7242 | 0.9132 | 0.7847 | 0.8845 | 0.7380 |
+| Experiment 1 `best.pt` | 82 | 0.9033 | 0.7849 | 0.8731 | 0.7264 | 0.9108 | 0.7850 | 0.8795 | 0.7369 |
+
+The test mAP50-95 values differ by about 0.0011. This is a small difference from one test split and does not establish that either initialization is better. The Experiment 1 checkpoint initialization did not improve the Experiment 2 test score in this run. These metrics describe held-out synthetic frames from this generator and its labels; they do not measure transfer to real photographs. The LOCO images motivated the asset changes and remain a development diagnostic rather than an untouched benchmark for this experiment.
+
+The evaluation outputs, including `test_metrics.json`, confusion matrices, precision-recall plots, and prediction montages, are preserved locally under:
+
+- `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42-experiment-02-test/`
+- `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42-experiment-02-test/`
+
+Small report snapshots are checked into `docs/assets/experiment-02/`. To reproduce either result, run `scripts/evaluate_test_set.py` with the corresponding `best.pt` checkpoint, `--dataset data/processed/experiment-02/dataset.yaml`, `--device 0`, `--imgsz 640`, `--batch 16`, and a new `--name`. The full metric summary stores absolute local paths, so use the documented repo-relative checkpoint and dataset locations when reproducing on another machine.

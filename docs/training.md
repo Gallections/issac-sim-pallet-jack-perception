@@ -6,7 +6,9 @@ The completed first model run is **Experiment 1 (`EXP-001`)**. It fine-tuned `yo
 
 This stage fine-tunes an Ultralytics YOLO detector on a prepared synthetic dataset. The default Experiment 1 configuration reads `data/processed/experiment-01/dataset.yaml`. Experiment 2 uses two separate configurations, both pointed at `data/processed/experiment-02/dataset.yaml`: [`train_yolo_e2_pretrained.yaml`](../configs/train_yolo_e2_pretrained.yaml) starts from `yolo26n.pt`, while [`train_yolo_e2_exp01-best.yaml`](../configs/train_yolo_e2_exp01-best.yaml) starts from Experiment 1's selected `best.pt`. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
 
-Experiment 2's raw dataset preparation is complete. The `yolo26n.pt`-initialized run has started and saved checkpoints, but has not completed training or held-out evaluation. To validate and launch that run, use:
+Experiment 2's raw dataset preparation and both training runs are complete. Validation metrics were calculated each epoch and used to select each run's `best.pt`; the held-out test set was evaluated afterward in a separate command. The run configurations and results are documented in the [Experiment 2 record](experiments/experiment-02.md). The test run directories are `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42-experiment-02-test/` and `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42-experiment-02-test/`.
+
+For a future rerun with a new run name, the original preflight and training commands are:
 
 ```bash
 python scripts/train_yolo.py --config configs/train_yolo_e2_pretrained.yaml --validate-only
@@ -20,7 +22,7 @@ python scripts/train_yolo.py --config configs/train_yolo_e2_exp01-best.yaml --va
 python scripts/train_yolo.py --config configs/train_yolo_e2_exp01-best.yaml
 ```
 
-It writes under `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42/`. Keep the Experiment 2 train/validation/test split fixed between both runs, then report held-out Experiment 2 synthetic test metrics for both. Re-evaluate on Experiment 1's synthetic test split to check regression, and report any LOCO comparison as diagnostic because those images informed the motivation for adding asset variants. No final Experiment 2 evaluation metrics exist yet; see the [Experiment 2 record](experiments/experiment-02.md).
+It writes under `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42/`. The current held-out Experiment 2 results for both initializations are reported in the [Experiment 2 record](experiments/experiment-02.md). Evaluating both checkpoints on Experiment 1's held-out synthetic test split remains a useful regression check. Report any LOCO comparison as a development diagnostic because those images motivated the asset variants.
 
 ## Training environment
 
