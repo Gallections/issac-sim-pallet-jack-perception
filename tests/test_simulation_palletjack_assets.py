@@ -15,6 +15,23 @@ from palletjack_assets import resolve_local_palletjack_usdz_paths
 
 
 class ResolveLocalPalletjackUsdzPathsTests(unittest.TestCase):
+    def test_replicator_uses_ten_rt_subframes_per_capture(self) -> None:
+        script_path = SDG_SCRIPT_DIR / "standalone_palletjack_sdg.py"
+        syntax_tree = ast.parse(script_path.read_text(encoding="utf-8"))
+        subframe_values = [
+            node.args[1].value
+            for node in ast.walk(syntax_tree)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "carb_settings"
+            and len(node.args) >= 2
+            and isinstance(node.args[0], ast.Constant)
+            and node.args[0].value == "/omni/replicator/RTSubframes"
+            and isinstance(node.args[1], ast.Constant)
+        ]
+
+        self.assertEqual(subframe_values, [10])
+
     def test_resolves_both_experiment_two_assets_from_script_location(self) -> None:
         with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as temporary_directory:
             root = Path(temporary_directory)
