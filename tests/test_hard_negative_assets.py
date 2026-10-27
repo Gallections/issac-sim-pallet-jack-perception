@@ -142,52 +142,50 @@ class HardNegativeAssetTests(unittest.TestCase):
             )
         )
 
-    def test_target_free_scene_randomizers_clear_semantics_from_sampled_assets(self) -> None:
+    def test_target_free_mode_does_not_instantiate_assets_per_frame(self) -> None:
         script_path = SDG_SCRIPT_DIR / "standalone_palletjack_sdg.py"
         tree = ast.parse(script_path.read_text(encoding="utf-8"))
-        function_names = {"sample_hard_negative_props", "sample_forklift_stacker"}
-        functions = {
-            node.name: node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef) and node.name in function_names
-        }
-
-        self.assertEqual(set(functions), function_names)
-        for function in functions.values():
-            instantiate_calls = [
-                node
-                for node in ast.walk(function)
-                if isinstance(node, ast.Call)
+        self.assertFalse(
+            any(
+                isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
                 and node.func.attr == "instantiate"
-            ]
-            self.assertEqual(len(instantiate_calls), 1)
-            clear_semantics_calls = [
-                node
-                for node in ast.walk(function)
-                if isinstance(node, ast.Call)
+                for node in ast.walk(tree)
+            )
+        )
+
+    def test_target_free_mode_randomizes_the_preloaded_distractor_group_each_frame(self) -> None:
+        script_path = SDG_SCRIPT_DIR / "standalone_palletjack_sdg.py"
+        tree = ast.parse(script_path.read_text(encoding="utf-8"))
+        main_function = next(
+            node
+            for node in tree.body
+            if isinstance(node, ast.FunctionDef) and node.name == "main"
+        )
+        pose_gate = next(
+            node
+            for node in ast.walk(main_function)
+            if isinstance(node, ast.If)
+            and any(
+                isinstance(child, ast.Attribute)
+                and child.attr == "distractors_only"
+                for child in ast.walk(node.test)
+            )
+            and any(
+                isinstance(child, ast.Attribute)
+                and child.attr == "modify"
+                for child in ast.walk(ast.Module(body=node.body, type_ignores=[]))
+            )
+        )
+        self.assertTrue(
+            any(
+                isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)
-                and node.func.attr == "semantics"
-                and isinstance(node.func.value, ast.Attribute)
-                and node.func.value.attr == "modify"
-            ]
-            self.assertEqual(len(clear_semantics_calls), 1)
-            self.assertEqual(
-                next(
-                    ast.literal_eval(keyword.value)
-                    for keyword in clear_semantics_calls[0].keywords
-                    if keyword.arg == "semantics"
-                ),
-                [],
+                and node.func.attr == "pose"
+                for statement in pose_gate.body
+                for node in ast.walk(statement)
             )
-            self.assertEqual(
-                next(
-                    ast.literal_eval(keyword.value)
-                    for keyword in clear_semantics_calls[0].keywords
-                    if keyword.arg == "mode"
-                ),
-                "clear",
-            )
+        )
 
     def test_regular_distractor_assets_have_semantics_cleared(self) -> None:
         script_path = SDG_SCRIPT_DIR / "standalone_palletjack_sdg.py"
@@ -265,10 +263,26 @@ class HardNegativeAssetTests(unittest.TestCase):
             any(
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Name)
-                and node.func.id == "register_hard_negative_randomizers"
+                and node.func.id == "add_distractors"
                 for statement in target_gate.orelse
                 for node in ast.walk(statement)
             )
+        )
+        hard_negative_distractor_call = next(
+            node
+            for statement in target_gate.orelse
+            for node in ast.walk(statement)
+            if isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Name)
+            and node.func.id == "add_distractors"
+        )
+        self.assertEqual(
+            next(
+                ast.literal_eval(keyword.value)
+                for keyword in hard_negative_distractor_call.keywords
+                if keyword.arg == "distractor_type"
+            ),
+            "all",
         )
 
     def test_single_experiment_three_launcher_generates_positive_and_hard_negative_groups(self) -> None:
@@ -283,8 +297,20 @@ class HardNegativeAssetTests(unittest.TestCase):
             self.assertIn("no_distractors", contents)
             self.assertGreaterEqual(contents.count("--data_dir"), 4)
 
+    def test_experiment_three_hard_negative_launchers_only_write_hard_negative_data(self) -> None:
+        script_directory = PROJECT_ROOT / "simulation" / "scripts"
         for filename in ("generate_hard_negatives.bat", "generate_hard_negatives.sh"):
-            self.assertFalse((script_directory / filename).exists())
+            launcher = script_directory / filename
+            self.assertTrue(launcher.is_file())
+            contents = launcher.read_text(encoding="utf-8")
+            self.assertIn("experiment-03", contents)
+            self.assertIn("hard_negatives", contents)
+            self.assertIn("--distractors-only", contents)
+            self.assertIn("--num_frames 1000", contents)
+            self.assertEqual(contents.count("--data_dir"), 1)
+            self.assertNotIn("distractors_warehouse", contents)
+            self.assertNotIn("distractors_additional", contents)
+            self.assertNotIn("no_distractors", contents)
 
     def test_regular_generation_launchers_write_experiment_three_without_touching_experiment_two(self) -> None:
         script_directory = PROJECT_ROOT / "simulation" / "scripts"

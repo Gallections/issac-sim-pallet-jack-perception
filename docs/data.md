@@ -1,6 +1,6 @@
 # Data workflow
 
-The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and was used for two completed training runs. Experiment 3 adds new target-positive collections and a target-free hard-negative collection under `data/raw/experiment-03/`; it has not yet been generated or processed. This guide explains how those raw sources map to processed model inputs.
+The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and was used for two completed training runs. Experiment 3 (`EXP-003`) has a separate raw collection under `data/raw/experiment-03/`, with the current manual/electric pallet-truck target scope and a target-free hard-negative condition. It has not yet been split or processed. See its [experiment record](experiments/experiment-03.md) for collection counts and the one outstanding annotation issue.
 
 This document records the current Isaac Sim synthetic-data export and the path into object-detection training. Synthetic inputs and experiment-specific derived outputs are isolated by experiment: Experiment 1 uses `data/raw/experiment-01/` and `data/processed/experiment-01/`; Experiment 2 uses the matching `experiment-02` folders. The LOCO source images are retained once under Experiment 1 because they were first used for its external evaluation; they can be reused as an evaluation set for later experiments without duplicating the large raw image collection.
 
@@ -15,10 +15,10 @@ data/
 └── processed/
     ├── experiment-01/       # Experiment 1 manifests, synthetic dataset, and real-evaluation adapters
     ├── experiment-02/       # Experiment 2 manifests and derived datasets
-    └── experiment-03/       # Processed Experiment 3 data (not created yet)
+    └── experiment-03/       # Reserved for Experiment 3 manifests and derived data; not prepared yet
 ```
 
-The Experiment 3 raw folder will contain `distractors_warehouse/` (2,000 positive-target frames), `distractors_additional/` (2,000), `no_distractors/` (1,000), and `hard_negatives/` (1,000 target-free frames). One `generate_data.bat` or `generate_data.sh` run generates all four groups and creates the output directories under `experiment-03`; it leaves the existing experiment folders unchanged. Change the launcher's `EXPERIMENT_ID` setting to create a separate folder for a future collection.
+The Experiment 3 raw collection was generated with four groups: `distractors_warehouse/` (2,000 nominal target-positive frames), `distractors_additional/` (2,000), `no_distractors/` (1,000), and `hard_negatives/` (1,000 target-free frames). After image cleanup, 5,762 paired RGB/annotation files remain. The hard-negative run loads the combined warehouse and additional distractor pools, including local props and the stacker, then randomizes their poses and the camera per frame without adding pallet-truck targets. One `generate_data.bat` or `generate_data.sh` run generates all four groups. If the three positive groups are already collected and only hard negatives need another run, use `generate_hard_negatives.bat` or `generate_hard_negatives.sh`. Both options write under `experiment-03` and leave the other experiment folders unchanged. Change the full launcher's `EXPERIMENT_ID` setting to create a separate folder for a future collection.
 
 The validation, split, processing, training, and evaluation defaults continue to target Experiment 1. To work on another experiment, pass its raw and processed roots to the preparation commands and select its training config. This keeps existing baseline commands reproducible and prevents a new experiment from replacing prior data. Experiments 1 and 2 reuse the same processed LOCO adapter, but its broad `pallet_truck` annotations have not been audited to distinguish in-scope manual/electric pallet trucks from stackers. They are not verified labels for the current target.
 
@@ -110,6 +110,22 @@ The raw export was then curated and validated. Three zero-width KITTI boxes were
 | **Total** | **4,824** | **23,344** | **301** |
 
 The prepared dataset has 3,859 training, 483 validation, and 482 test images using the same seed-42 80/10/10 per-scenario split policy. Validation and processing are complete, and both training configurations passed preflight. The two trained models were validated during training and evaluated on the held-out test split. See the [experiment record](experiments/experiment-02.md) for per-scenario split counts, validation scores, and test comparison.
+
+## Experiment 3 raw collection and curation
+
+Experiment 3 follows the revised label policy: manual and electric pallet trucks are positive `palletjack` targets; forklift stackers and other warehouse props are unlabeled distractors. It includes three positive-scene conditions and a separate negative-only condition. The hard-negative scenes contain the combined warehouse and additional distractor pools, randomized in pose and camera view with no pallet-truck target. Their KITTI label files are empty, as expected for negative images.
+
+The nominal collection contained 6,000 frames. Fully transparent-black RGB images and their corresponding KITTI labels were removed; one additional entirely black RGB image was removed by the same invalid-frame cleanup. The resulting retained pairs are:
+
+| Group | RGB/annotation pairs | Valid 2D objects | Empty labels |
+|---|---:|---:|---:|
+| `distractors_additional` | 1,937 | 4,918 | 285 |
+| `distractors_warehouse` | 1,948 | 5,829 | 230 |
+| `hard_negatives` | 908 | 0 | 908 |
+| `no_distractors` | 969 | 3,869 | 59 |
+| **Total** | **5,762** | **14,616** | **1,482** |
+
+The cleanup removed 238 RGB/label pairs: 63 from `distractors_additional`, 52 from `distractors_warehouse`, 92 from `hard_negatives`, and 31 from `no_distractors`. Image and annotation stems currently match in every group. Raw KITTI validation was then run; it reported one remaining zero-width box in `distractors_warehouse/Camera/object_detection/1727.txt` (the third label row, with `x_min == x_max == 0`). This label must be corrected or removed before generating manifests and processed YOLO data. No Experiment 3 split, processing, training, or evaluation has been performed yet. See the [Experiment 3 record](experiments/experiment-03.md) for the full status and next step.
 
 ## Experiment 1 synthetic train/validation/test split
 

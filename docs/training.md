@@ -8,6 +8,8 @@ This stage fine-tunes an Ultralytics YOLO detector on a prepared synthetic datas
 
 Experiment 2's raw dataset preparation and both training runs are complete. Validation metrics were calculated each epoch and used to select each run's `best.pt`; the held-out test set was evaluated afterward in a separate command. The run configurations and results are documented in the [Experiment 2 record](experiments/experiment-02.md). The test run directories are `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42-experiment-02-test/` and `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42-experiment-02-test/`.
 
+Experiment 3 has not reached training preparation: its raw images and KITTI labels are under `data/raw/experiment-03/`, but there is no split or processed dataset yet. Raw validation found a zero-width box that must be resolved before creating training inputs. Track its data status in the [Experiment 3 record](experiments/experiment-03.md).
+
 These are the original preflight and training commands for the `yolo26n.pt`-initialized run:
 
 ```bash

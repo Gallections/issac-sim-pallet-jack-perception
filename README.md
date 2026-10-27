@@ -4,7 +4,7 @@ An experimental pipeline for generating automatically labeled pallet-jack images
 
 ## Abstract
 
-This project studies whether synthetic pallet-jack scenes can support object-detector training and how well a detector transfers to real images. Experiment 1 established a YOLO26n baseline trained on 5,000 Isaac Sim frames. Experiment 2 added a powered electric pallet truck and a forklift stacker, both labeled positive under the original broad interpretation. The current target includes **manual and electric pallet trucks**, while forklift stackers are hard negatives. Experiment 2 is therefore a historical run with stackers incorrectly labeled as positives. Experiment 3 is configured to add target-free hard-negative scenes with stackers. Existing LOCO subset-1 results are diagnostic: its `pallet_truck` annotations do not distinguish pallet-truck variants from stackers, so labels need subtype review before metrics can be treated as definitive for the current target.
+This project studies whether synthetic pallet-jack scenes can support object-detector training and how well a detector transfers to real images. Experiment 1 established a YOLO26n baseline trained on 5,000 Isaac Sim frames. Experiment 2 added a powered electric pallet truck and a forklift stacker, both labeled positive under the original broad interpretation. The current target includes **manual and electric pallet trucks**, while forklift stackers are out of scope and serve as hard negatives. Experiment 2 remains a historical run with stackers labeled positive. Experiment 3 collected new positive scenes under the current target policy and target-free hard-negative scenes containing stackers and other warehouse props. Its 5,762 retained raw image/label pairs have matching filenames; KITTI validation found one zero-width annotation that must be resolved before processing. Existing LOCO subset-1 results are diagnostic: its `pallet_truck` annotations do not distinguish pallet-truck variants from stackers, so labels need subtype review before metrics can be treated as definitive for the current target.
 
 ## 1. Research question
 
@@ -22,9 +22,9 @@ Replicator exports 960×544 RGB images and KITTI-style 2D object-detection label
 |---|---|---|
 | **1 — baseline** | 5,000 frames: 2,000 warehouse distractors, 2,000 additional distractors, 1,000 no added distractors | Original NVIDIA pallet-jack asset mix |
 | **2 — expanded assets (historical label scope)** | 4,824 retained frames across the same three conditions | Two local USDZ assets (powered electric pallet truck and forklift stacker) were labeled positive; 176 transparent-black RGB frames and paired labels removed, and three zero-width annotation rows removed |
-| **3 — expanded collection (configured, not yet generated)** | Planned 6,000 frames under `data/raw/experiment-03/`: 5,000 target-positive frames across three conditions and 1,000 target-free hard negatives | Current target policy: manual and electric pallet trucks are positive; stackers and the other local USDZ props are unlabeled distractors. The hard-negative group uses eight sampled props plus one stacker per frame; empty object labels expected |
+| **3 — current target and hard negatives (raw collection complete)** | 6,000 generated frames; 5,762 retained after removing 238 invalid black RGB frames and paired labels | Manual and electric pallet trucks are positive in three conditions; 908 retained target-free frames contain warehouse props, local distractors, and the stacker |
 
-The raw exports, simulator requirements, randomization settings, and cleanup details are documented in the [simulation guide](simulation/README.md) and the [Experiment 1](docs/experiments/experiment-01.md) and [Experiment 2](docs/experiments/experiment-02.md) records. For Experiment 3, one `generate_data.bat` or `generate_data.sh` run creates all four groups under `data/raw/experiment-03/`; the output still needs to be generated and visually checked.
+The raw exports, simulator requirements, randomization settings, and cleanup details are documented in the [simulation guide](simulation/README.md) and the [Experiment 1](docs/experiments/experiment-01.md), [Experiment 2](docs/experiments/experiment-02.md), and [Experiment 3](docs/experiments/experiment-03.md) records. For Experiment 3, one `generate_data.bat` or `generate_data.sh` run creates all four groups under `data/raw/experiment-03/`; use `generate_hard_negatives.bat` or `.sh` to rerun only its hard-negative group. The current raw collection is already present; see the Experiment 3 record for retained counts, the cleanup, and the outstanding annotation issue.
 
 | Warehouse distractors | Additional distractors | No added distractors |
 |---|---|---|
@@ -40,6 +40,7 @@ Raw synthetic labels are validated, assigned to train/validation/test manifests,
 |---|---:|---:|---:|---:|
 | 1 | 4,000 | 500 | 500 | 1,427 |
 | 2 | 3,859 | 483 | 482 | 2,307 |
+| 3 | Not prepared | Not prepared | Not prepared | Not evaluated |
 
 For real-image evaluation, the project uses [LOCO (Logistics Objects in Context)](https://github.com/tum-fml/loco), an annotated logistics-scene dataset. The current adapter retains 1,075 COCO-listed images from subset-1 and filters the broad `pallet_truck` category, producing 594 boxes in 403 images. LOCO does not distinguish manual and electric pallet trucks from stackers in that category, so those 594 boxes are **not yet verified ground truth for the current target**. The prior LOCO metrics must be read as measurements against the broad LOCO category, not definitive pallet-truck accuracy. An additional 65 JPGs without COCO image records are excluded because their labels are unknown. COCO boxes are converted to YOLO format only as an adapter for the existing Ultralytics evaluator; the COCO annotations remain the source labels.
 
@@ -116,7 +117,7 @@ These selected scenes illustrate failure modes; they are not a representative sa
 
 ## 6. Interpretation, limitations, and next work
 
-The real-image error audit suggested limited hard-negative coverage may contribute to false detections, but the LOCO labels do not separate in-scope pallet trucks from stackers. The earlier audit counts and metrics therefore cannot establish current-target false-positive or false-negative rates. Experiment 3 is configured to recollect all three positive-scene conditions with the current asset mix and add target-free scenes with stackers; all its output must be reviewed and processed before any new training comparison.
+The real-image error audit suggested limited hard-negative coverage may contribute to false detections, but the LOCO labels do not separate in-scope pallet trucks from stackers. The earlier audit counts and metrics therefore cannot establish current-target false-positive or false-negative rates. Experiment 3 now provides a raw collection using the revised target scope and target-free hard negatives. It has not been split, processed, trained, or evaluated. Its initial raw validation found one zero-width box in `distractors_warehouse/Camera/object_detection/1727.txt`; resolve that label issue and complete visual review before processing or making a training comparison.
 
 Interpret these results with the following limits in mind:
 
@@ -126,10 +127,10 @@ Interpret these results with the following limits in mind:
 - **One training seed per configuration.** The small Experiment 2 initialization difference may reflect run variation; repeated seeds and a controlled ablation are needed to establish a reliable effect.
 - **Deployment is not evaluated.** No inference integration, runtime benchmark, or real-system validation in Isaac Sim has been completed.
 
-Next, generate and review all Experiment 3 positive and hard-negative groups, audit LOCO labels to separate pallet trucks from stackers, then process and train a controlled comparison. Reserve an independent real-image holdout and repeat training/evaluation with multiple seeds before drawing transfer conclusions.
+Next, resolve the Experiment 3 zero-width annotation, review its samples and labels, then create its experiment-specific split and processed data before training. Audit LOCO labels to separate pallet trucks from stackers. Reserve an independent real-image holdout and repeat training/evaluation with multiple seeds before drawing transfer conclusions.
 
 ## 7. Reproducibility and project materials
 
-Full run artifacts and checkpoints are local and gitignored. Dataset preparation, configuration, and commands are documented in the [data guide](docs/data.md), [training guide](docs/training.md), and [evaluation guide](docs/evaluation.md). The two interactive notebooks are [`data_processing.ipynb`](notebooks/data_processing.ipynb) and [`explore_training_results.ipynb`](notebooks/explore_training_results.ipynb). Experiment-specific counts, validation curves, test artifacts, and run paths are in the [Experiment 1 record](docs/experiments/experiment-01.md) and [Experiment 2 record](docs/experiments/experiment-02.md).
+Full run artifacts and checkpoints are local and gitignored. Dataset preparation, configuration, and commands are documented in the [data guide](docs/data.md), [training guide](docs/training.md), and [evaluation guide](docs/evaluation.md). The two interactive notebooks are [`data_processing.ipynb`](notebooks/data_processing.ipynb) and [`explore_training_results.ipynb`](notebooks/explore_training_results.ipynb). Experiment-specific counts, validation curves, test artifacts, and run paths are in the [Experiment 1](docs/experiments/experiment-01.md), [Experiment 2](docs/experiments/experiment-02.md), and [Experiment 3](docs/experiments/experiment-03.md) records.
 
 The LOCO dataset is described by Mayershofer, Holm, Molter, and Fottner, [“LOCO: Logistics Objects in Context,” ICMLA 2020](https://mediatum.ub.tum.de/doc/1578845/document.pdf); the project and dataset details are available in the [official LOCO repository](https://github.com/tum-fml/loco). Additional provenance and licensing notes are in [docs/data.md](docs/data.md).
