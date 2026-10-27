@@ -4,13 +4,13 @@ An experimental pipeline for generating automatically labeled pallet-jack images
 
 ## Abstract
 
-This project studies whether synthetic pallet-jack scenes can support object-detector training and how well a detector transfers to real images. Experiment 1 established a YOLO26n baseline trained on 5,000 Isaac Sim frames. Experiment 2 added two locally sourced pallet-jack assets, generated a separate synthetic dataset, and compared training from the pretrained checkpoint with training initialized from Experiment 1. Both Experiment 2 models performed similarly on their synthetic test set. On the shared LOCO subset-1 evaluation, Experiment 2 had higher recall and mAP than the baseline but lower precision; all three models still performed weakly on real images. Because LOCO informed the Experiment 2 design and its annotations have not been comprehensively audited, these real-image scores are diagnostic rather than an independent benchmark.
+This project studies whether synthetic pallet-jack scenes can support object-detector training and how well a detector transfers to real images. Experiment 1 established a YOLO26n baseline trained on 5,000 Isaac Sim frames. Experiment 2 added a powered electric pallet truck and a forklift stacker, both labeled positive under the original broad interpretation. The current target includes **manual and electric pallet trucks**, while forklift stackers are hard negatives. Experiment 2 is therefore a historical run with stackers incorrectly labeled as positives. Experiment 3 is configured to add target-free hard-negative scenes with stackers. Existing LOCO subset-1 results are diagnostic: its `pallet_truck` annotations do not distinguish pallet-truck variants from stackers, so labels need subtype review before metrics can be treated as definitive for the current target.
 
 ## 1. Research question
 
-Can independently randomized scenes rendered in Isaac Sim provide useful training data for a pallet-jack detector, and what changes when the simulated asset mix better represents the variety of pallet jacks found in real warehouses?
+Can independently randomized scenes rendered in Isaac Sim provide useful training data for a detector of manual and electric pallet trucks, and how do hard negatives such as forklift stackers affect performance?
 
-The detector is a one-class object detector. Given an image, it returns pallet-jack bounding boxes, class IDs, and confidence scores. It does not classify images into “pallet jack” versus “none”; images without a target object are negative examples with no boxes.
+The intended detector is a one-class object detector for manual and electric pallet trucks, both labeled `pallet-jack`. Given an image, it returns bounding boxes, class IDs, and confidence scores. It does not classify images into “pallet jack” versus “none”; images without an in-scope truck are negative examples with no boxes. Forklift stackers are out of scope and are useful hard negatives.
 
 ## 2. Synthetic data generation
 
@@ -21,9 +21,10 @@ Replicator exports 960×544 RGB images and KITTI-style 2D object-detection label
 | Experiment | Synthetic source | Curation and assets |
 |---|---|---|
 | **1 — baseline** | 5,000 frames: 2,000 warehouse distractors, 2,000 additional distractors, 1,000 no added distractors | Original NVIDIA pallet-jack asset mix |
-| **2 — expanded assets** | 4,824 retained frames across the same three conditions | Two local USDZ pallet-jack variants added alongside NVIDIA's asset; 176 transparent-black RGB frames and paired labels removed, and three zero-width annotation rows removed |
+| **2 — expanded assets (historical label scope)** | 4,824 retained frames across the same three conditions | Two local USDZ assets (powered electric pallet truck and forklift stacker) were labeled positive; 176 transparent-black RGB frames and paired labels removed, and three zero-width annotation rows removed |
+| **3 — hard negatives (configured, not yet generated)** | Planned 1,000 target-free frames under `data/raw/experiment-03/distractors_only/` | Eight sampled props from both existing pools and four local USDZ distractors, plus one forklift stacker per frame; empty object labels expected |
 
-The raw exports, simulator requirements, randomization settings, and cleanup details are documented in the [simulation guide](simulation/README.md) and [experiment records](docs/experiments/experiment-01.md), [Experiment 2](docs/experiments/experiment-02.md).
+The raw exports, simulator requirements, randomization settings, and cleanup details are documented in the [simulation guide](simulation/README.md) and the [Experiment 1](docs/experiments/experiment-01.md) and [Experiment 2](docs/experiments/experiment-02.md) records. Experiment 3 has a dedicated launcher, but its output still needs to be generated and visually checked.
 
 | Warehouse distractors | Additional distractors | No added distractors |
 |---|---|---|
@@ -40,7 +41,7 @@ Raw synthetic labels are validated, assigned to train/validation/test manifests,
 | 1 | 4,000 | 500 | 500 | 1,427 |
 | 2 | 3,859 | 483 | 482 | 2,307 |
 
-For real-image evaluation, the project uses [LOCO (Logistics Objects in Context)](https://github.com/tum-fml/loco), an annotated logistics-scene dataset. The project retains all 1,075 COCO-listed images from subset-1, filters annotations to `pallet_truck`, and maps that category to `pallet-jack`. The resulting set contains 594 target boxes in 403 positive images and 672 images with no pallet-jack annotation. An additional 65 JPGs without COCO image records are excluded because their labels are unknown. COCO boxes are converted to YOLO format only as an adapter for the existing Ultralytics evaluator; the COCO annotations remain the source labels.
+For real-image evaluation, the project uses [LOCO (Logistics Objects in Context)](https://github.com/tum-fml/loco), an annotated logistics-scene dataset. The current adapter retains 1,075 COCO-listed images from subset-1 and filters the broad `pallet_truck` category, producing 594 boxes in 403 images. LOCO does not distinguish manual and electric pallet trucks from stackers in that category, so those 594 boxes are **not yet verified ground truth for the current target**. The prior LOCO metrics must be read as measurements against the broad LOCO category, not definitive pallet-truck accuracy. An additional 65 JPGs without COCO image records are excluded because their labels are unknown. COCO boxes are converted to YOLO format only as an adapter for the existing Ultralytics evaluator; the COCO annotations remain the source labels.
 
 The same processed LOCO adapter is reused for all three model evaluations. LOCO subset-1 is officially a validation subset; it is not an independent test set for this project.
 
@@ -115,17 +116,17 @@ These selected scenes illustrate failure modes; they are not a representative sa
 
 ## 6. Interpretation, limitations, and next work
 
-The real-image error audit suggests that limited hard-negative coverage may contribute to false detections: 269 and 185 of the 672 LOCO images without a pallet-jack annotation trigger at least one prediction from the two Experiment 2 models at confidence 0.25. The Experiment 2 training split has 241 empty-label images among 3,859 training images (about 6.2%). That count does not measure whether those examples resemble confusing real warehouse equipment; positive images also provide background pixels as negative training signal. Negative coverage alone cannot explain the many missed LOCO boxes. Appearance, scale, viewpoint, occlusion, annotation quality, and the synthetic-to-real gap are also plausible factors.
+The real-image error audit suggested limited hard-negative coverage may contribute to false detections, but the LOCO labels do not separate in-scope pallet trucks from stackers. The earlier audit counts and metrics therefore cannot establish current-target false-positive or false-negative rates. Experiment 3 is configured to add target-free scenes with stackers; its output must be reviewed and processed before any new training comparison.
 
 Interpret these results with the following limits in mind:
 
 - **LOCO is a development diagnostic.** Its subset-1 is officially a validation subset, and the observed appearance/scale gap informed Experiment 2. It is not an untouched final benchmark.
-- **LOCO labels need broader review.** Predictions in images without a target box are candidate false detections, not verified false positives, until the annotations are visually checked.
+- **LOCO labels do not fully match the current target scope.** The broad `pallet_truck` category may include stackers, so its old metrics are diagnostic until images and boxes are reviewed for equipment subtype.
 - **Synthetic test sets differ.** The Experiment 1 and Experiment 2 test results measure different generated distributions and should not be read as a controlled experiment-to-experiment comparison.
 - **One training seed per configuration.** The small Experiment 2 initialization difference may reflect run variation; repeated seeds and a controlled ablation are needed to establish a reliable effect.
 - **Deployment is not evaluated.** No inference integration, runtime benchmark, or real-system validation in Isaac Sim has been completed.
 
-Next, add verified hard negatives and fully labeled examples of varied real pallet-jack designs, reserve an independent real-image holdout, and repeat training/evaluation with multiple seeds. This will help distinguish asset coverage, negative coverage, and other sources of the transfer gap.
+Next, generate and review the Experiment 3 stacker hard negatives, audit LOCO labels to separate pallet trucks from stackers, then process and train a controlled comparison. Reserve an independent real-image holdout and repeat training/evaluation with multiple seeds before drawing transfer conclusions.
 
 ## 7. Reproducibility and project materials
 

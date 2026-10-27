@@ -25,6 +25,13 @@ from omni.isaac.kit import SimulationApp
 import os
 import argparse
 from palletjack_assets import resolve_local_palletjack_usdz_paths
+from hard_negative_assets import (
+    combine_hard_negative_asset_pool,
+    combine_regular_distractor_asset_pool,
+    resolve_local_hard_negative_usdz_paths,
+    resolve_local_scene_distractor_usdz_paths,
+    should_add_palletjack_targets,
+)
 
 parser = argparse.ArgumentParser("Dataset generator")
 parser.add_argument("--headless", type=bool, default=False, help="Launch script headless, default is False")
@@ -33,6 +40,11 @@ parser.add_argument("--width", type=int, default=960, help="Width of image")
 parser.add_argument("--num_frames", type=int, default=1000, help="Number of frames to record")
 parser.add_argument("--distractors", type=str, default="warehouse", 
                     help="Options are 'warehouse' (default), 'additional' or None")
+parser.add_argument(
+    "--distractors-only",
+    action="store_true",
+    help="Generate target-free hard negatives from both distractor groups and forklift stackers",
+)
 parser.add_argument("--data_dir", type=str, default=os.getcwd() + "/_palletjack_data", 
                     help="Location where data will be output")
 
@@ -42,6 +54,12 @@ args, unknown_args = parser.parse_known_args()
 # script so generation is independent of the shell's current working directory.
 LOCAL_PALLETJACKS = [
     str(path) for path in resolve_local_palletjack_usdz_paths(__file__)
+]
+LOCAL_SCENE_DISTRACTORS = [
+    str(path) for path in resolve_local_scene_distractor_usdz_paths(__file__).values()
+]
+LOCAL_STACKER_PATHS = [
+    str(path) for path in resolve_local_hard_negative_usdz_paths(__file__).values()
 ]
 
 # This is the config used to launch simulation. 
@@ -217,21 +235,28 @@ def prefix_with_isaac_asset_server(relative_path):
     return assets_root_path + relative_path
 
 
-def full_distractors_list(distractor_type="warehouse"):
-    """Distractor type allowed are warehouse, additional or None. They load corresponding objects and add
-    them to the scene for DR"""
-    full_dist_list = []
-
+def full_distractors_list(distractor_type="warehouse", include_stacker=True):
+    """Resolve one existing distractor group or combine both groups for hard negatives."""
     if distractor_type == "warehouse":
-        for distractor in DISTRACTORS_WAREHOUSE:
-            full_dist_list.append(prefix_with_isaac_asset_server(distractor))
+        distractor_assets = DISTRACTORS_WAREHOUSE
     elif distractor_type == "additional":
-        for distractor in DISTRACTORS_ADDITIONAL:
-            full_dist_list.append(prefix_with_isaac_asset_server(distractor))
+        distractor_assets = DISTRACTORS_ADDITIONAL
+    elif distractor_type == "all":
+        distractor_assets = combine_hard_negative_asset_pool(
+            DISTRACTORS_WAREHOUSE,
+            DISTRACTORS_ADDITIONAL,
+            [],
+        )
     else:
         print("No Distractors being added to the current scene for SDG")
+        return []
 
-    return full_dist_list
+    resolved_isaac_assets = [prefix_with_isaac_asset_server(path) for path in distractor_assets]
+    return combine_regular_distractor_asset_pool(
+        resolved_isaac_assets,
+        LOCAL_SCENE_DISTRACTORS,
+        LOCAL_STACKER_PATHS if include_stacker else [],
+    )
 
 
 def full_textures_list():
@@ -266,7 +291,50 @@ def add_distractors(distractor_type="warehouse"):
     full_distractors = full_distractors_list(distractor_type)
     distractors = [rep.create.from_usd(distractor_path, count=1) for distractor_path in full_distractors]
     distractor_group = rep.create.group(distractors)
+    with distractor_group:
+        rep.modify.semantics(semantics=[], mode="clear")
     return distractor_group
+
+
+def register_hard_negative_randomizers():
+    """Register target-free samplers for props and forklift stackers."""
+    ordinary_distractor_paths = full_distractors_list("all", include_stacker=False)
+    negative_equipment_paths = LOCAL_STACKER_PATHS
+
+    def sample_hard_negative_props(size=8):
+        props = rep.randomizer.instantiate(
+            paths=ordinary_distractor_paths,
+            size=size,
+            mode="scene_instance",
+            with_replacements=False,
+        )
+        with props:
+            rep.modify.semantics(semantics=[], mode="clear")
+            rep.modify.pose(
+                position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
+                rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
+                scale=rep.distribution.uniform(1, 1.5),
+            )
+        return props.node
+
+    def sample_forklift_stacker():
+        equipment = rep.randomizer.instantiate(
+            paths=negative_equipment_paths,
+            size=1,
+            mode="scene_instance",
+            with_replacements=False,
+        )
+        with equipment:
+            rep.modify.semantics(semantics=[], mode="clear")
+            rep.modify.pose(
+                position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
+                rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
+                scale=1.9,
+            )
+        return equipment.node
+
+    rep.randomizer.register(sample_hard_negative_props)
+    rep.randomizer.register(sample_forklift_stacker)
 
 
 # This will handle replicator
@@ -300,12 +368,16 @@ def main():
 
 
     textures = full_textures_list()
-    (
-        rep_palletjack_group,
-        rep_local_palletjack_original_group,
-        rep_local_palletjack_randomized_group,
-    ) = add_palletjacks()
-    rep_distractor_group = add_distractors(distractor_type=args.distractors)
+    include_palletjack_targets = should_add_palletjack_targets(args.distractors_only)
+    if include_palletjack_targets:
+        (
+            rep_palletjack_group,
+            rep_local_palletjack_original_group,
+            rep_local_palletjack_randomized_group,
+        ) = add_palletjacks()
+        rep_distractor_group = add_distractors(distractor_type=args.distractors)
+    else:
+        register_hard_negative_randomizers()
 
     # We only need labels for the palletjack objects
     update_semantics(stage=stage, keep_semantics=["palletjack"])
@@ -321,38 +393,44 @@ def main():
             rep.modify.pose(position=rep.distribution.uniform((-9.2, -11.8, 0.4), (7.2, 15.8, 4)),
                             look_at=(0, 0, 0))
 
-        # Get the Palletjack body mesh and modify its color
-        with rep.get.prims(path_pattern="SteerAxles"):
-            rep.randomizer.color(colors=rep.distribution.uniform((0, 0, 0), (1, 1, 1)))
+        if args.distractors_only:
+            # Stackers and props are unlabelled; the KITTI writer should
+            # therefore emit empty object annotations for these negative images.
+            rep.randomizer.sample_hard_negative_props()
+            rep.randomizer.sample_forklift_stacker()
+        else:
+            # Get the Palletjack body mesh and modify its color
+            with rep.get.prims(path_pattern="SteerAxles"):
+                rep.randomizer.color(colors=rep.distribution.uniform((0, 0, 0), (1, 1, 1)))
 
-        # Alternate between the source USDZ materials and randomized color materials.
-        # Separate instances let the original material bindings remain untouched.
-        with rep_local_palletjack_original_group:
-            rep.modify.visibility(rep.distribution.sequence([True, False]))
+            # Alternate between the source USDZ materials and randomized color materials.
+            # Separate instances let the original material bindings remain untouched.
+            with rep_local_palletjack_original_group:
+                rep.modify.visibility(rep.distribution.sequence([True, False]))
 
-        with rep_local_palletjack_randomized_group:
-            rep.modify.visibility(rep.distribution.sequence([False, True]))
-            rep.randomizer.color(colors=rep.distribution.uniform((0, 0, 0), (1, 1, 1)))
+            with rep_local_palletjack_randomized_group:
+                rep.modify.visibility(rep.distribution.sequence([False, True]))
+                rep.randomizer.color(colors=rep.distribution.uniform((0, 0, 0), (1, 1, 1)))
 
-        # Randomize the pose of all the added palletjacks
-        with rep_palletjack_group:
-            rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
-                            rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
-                            scale=rep.distribution.uniform((0.01, 0.01, 0.01), (0.01, 0.01, 0.01)))
+            # Randomize the pose of all the added palletjacks
+            with rep_palletjack_group:
+                rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
+                                rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
+                                scale=rep.distribution.uniform((0.01, 0.01, 0.01), (0.01, 0.01, 0.01)))
 
-        # Keep the USDZ-authored sizes comparable to the target pallet jacks.
-        with rep_local_palletjack_original_group:
-            rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
-                            rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
-                            scale=1.9)
+            # Keep the USDZ-authored sizes comparable to the target pallet jacks.
+            with rep_local_palletjack_original_group:
+                rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
+                                rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
+                                scale=1.9)
 
-        with rep_local_palletjack_randomized_group:
-            rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
-                            rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
-                            scale=1.9)
+            with rep_local_palletjack_randomized_group:
+                rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
+                                rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),
+                                scale=1.9)
 
-        # Modify the pose of all the distractors in the scene
-        if args.distractors != "None":
+        # Modify the pose of the fixed distractor group for existing generation modes.
+        if not args.distractors_only and args.distractors != "None":
             with rep_distractor_group:
                 rep.modify.pose(position=rep.distribution.uniform((-6, -6, 0), (6, 12, 0)),
                                     rotation=rep.distribution.uniform((0, 0, 0), (0, 0, 360)),

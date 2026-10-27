@@ -1,11 +1,13 @@
-# Experiment 2 — Expanded Isaac Sim pallet-jack asset mix
+# Experiment 2 — Expanded Isaac Sim pallet-truck asset mix
 
 ## Purpose and status
 
 **Experiment ID:** `EXP-002`  
 **Status:** both training runs completed and were evaluated on the held-out Experiment 2 synthetic test split.
 
-Experiment 2 investigates whether adding larger and visually different pallet-jack assets to the synthetic scene improves the model's ability to detect the pallet-jack appearances that were weakly detected in the separate LOCO real-image diagnostic. It preserves Experiment 1 as the baseline and gives all new raw data, processed data, and future model runs an experiment-specific location.
+Experiment 2 investigated whether adding larger, visually different pallet-truck-like assets to the synthetic scene improved results on the selected LOCO real-image diagnostic. It preserves Experiment 1 as the baseline and gives its raw data, processed data, and model runs an experiment-specific location. It remains a historical asset-mix experiment rather than a controlled study of manual and electric pallet-truck appearance variation.
+
+> **Label-scope note:** A later review identified `electric_pallet_jack.usdz` as a powered electric pallet truck and `pallet_jack_advanced.usdz` as a forklift stacker. Electric pallet trucks are now included with manual pallet jacks under the `pallet-jack` class. Stackers are excluded and reserved as unlabeled hard negatives in Experiment 3. Experiment 2 labeled both local assets positive, so its labels include stackers that are negative under the current policy; retain those labels and metrics as historical artifacts rather than silently rewriting them.
 
 The LOCO results motivated this change, so LOCO is useful as a diagnostic during development. It must not be described as an untouched independent test set for this design iteration. A broader independently labeled real-world holdout is still needed for stronger transfer claims.
 
@@ -13,14 +15,14 @@ The LOCO results motivated this change, so LOCO is useful as a diagnostic during
 
 | Area | Experiment 1 (`EXP-001`) | Experiment 2 (`EXP-002`) |
 |---|---|---|
-| Synthetic assets | NVIDIA Isaac Sim pallet-jack asset | NVIDIA asset plus two local USDZ variants: `electric_pallet_jack.usdz` and `pallet_jack_advanced.usdz` |
+| Synthetic assets | NVIDIA Isaac Sim manual pallet-jack assets | NVIDIA assets plus local powered electric pallet truck and forklift stacker; both were labeled positive, but the stacker is now an out-of-scope hard negative |
 | Local model appearance | Not applicable | Original imported materials are visible on some frames; randomized-color instances are used on others |
 | Local asset scale | Not applicable | Fixed `1.9x` multiplier in the generator |
 | Render settling | Earlier setting | `/omni/replicator/RTSubframes` set to `10` after intermittent transparent-black images were observed |
 | Data roots | `data/raw/experiment-01/`, `data/processed/experiment-01/` | `data/raw/experiment-02/`, `data/processed/experiment-02/` |
 | Model results | Completed baseline | Two completed 100-epoch runs; both evaluated on the same held-out test split |
 
-The local USDZ files are machine-local and gitignored. Their assets are expected at `simulation/assets/pallet_jacks/experiment-02/`; users reproducing generation must supply the files themselves. The simulation implementation and settings are described in [`simulation/README.md`](../../simulation/README.md) and the generator at [`simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py`](../../simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py).
+The local USDZ files are machine-local and gitignored. The electric pallet-truck target is expected at `simulation/assets/pallet_jacks/electric_pallet_jack.usdz`; the stacker is now stored as a regular distractor at `simulation/assets/pallet_jack_advanced.usdz`. Users reproducing generation must supply the files themselves. The simulation implementation and settings are described in [`simulation/README.md`](../../simulation/README.md) and the generator at [`simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py`](../../simulation/scripts/palletjack_sdg/standalone_palletjack_sdg.py).
 
 ## Raw data cleanup and validation
 
@@ -116,7 +118,7 @@ Reproduce the test runs with `scripts/evaluate_test_set.py` and the checkpoints 
 
 ## LOCO real-image diagnostic
 
-Both Experiment 2 `best.pt` checkpoints were also evaluated against the same processed LOCO subset-1 adapter used for Experiment 1: 1,075 COCO-record images, 594 pallet-jack boxes across 403 positive images, and 672 negative images. The 65 extra JPG files without COCO image records were excluded. Evaluation used 640 input size, batch 16, four workers, and CUDA device 0 (NVIDIA GeForce RTX 5080 Laptop GPU). No training or label edits were performed during evaluation.
+Both Experiment 2 `best.pt` checkpoints were also evaluated against the same processed LOCO subset-1 adapter used for Experiment 1: 1,075 COCO-record images, 594 boxes from the broad `pallet_truck` category across 403 images, and 672 images without a box in that category. These are not verified current-scope positives and negatives because the LOCO category may include stackers. The 65 extra JPG files without COCO image records were excluded. Evaluation used 640 input size, batch 16, four workers, and CUDA device 0 (NVIDIA GeForce RTX 5080 Laptop GPU). No training or label edits were performed during evaluation.
 
 | Model | Precision | Recall | mAP50 | mAP50-95 |
 |---|---:|---:|---:|---:|
@@ -139,7 +141,7 @@ To inspect the gap behind the aggregate metrics, predictions from both Experimen
 | `yolo26n.pt` | 1,073 | 224 | 370 | 849 | 286 / 403 | 209 / 403 | 269 / 672 |
 | Experiment 1 `best.pt` | 598 | 174 | 420 | 424 | 318 / 403 | 255 / 403 | 185 / 672 |
 
-At this fixed threshold, the fresh-pretrained model finds more labeled objects, but it also produces many unmatched predictions. About 40% of LOCO's negative images have at least one prediction from that model, versus about 28% for the Experiment 1-initialized model. This quantifies the precision/recall trade-off behind the weak real-image scores; it is not a human verification that every COCO box is correct.
+At this fixed threshold, the fresh-pretrained model finds more labeled objects, but it also produces many unmatched predictions. About 40% of images without a LOCO `pallet_truck` box have at least one prediction from that model, versus about 28% for the Experiment 1-initialized model. These are counts against the broad LOCO category, not verified current-scope false positives or misses, because stackers may be included. This quantifies the model behavior on the existing adapter; it is not a human verification that every COCO box is correct.
 
 The local per-image audit gallery is at `local/annotation_audit/experiment-02-loco-predictions/index.html` in the working copy; its CSV summary is `local/annotation_audit/experiment-02-loco-predictions/per_image_audit.csv`. Both are generated local files and are ignored by Git. The gallery shows the original image, its ground-truth boxes, and both models' predictions. Green boxes are matched labels, dashed red boxes are missed labels, blue boxes are matched predictions, and orange boxes are unmatched predictions. It covers all images, sorted with cases missed by both models first. Review the flagged images before deciding whether individual annotations need correction; this automated matching alone cannot determine label correctness or pallet-jack subtype.
 

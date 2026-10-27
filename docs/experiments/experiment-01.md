@@ -60,7 +60,7 @@ The validation and test figures are snapshots in `docs/assets/baseline/` and `do
 
 ### External real-image diagnostic
 
-Experiment 1's synthetic-trained checkpoint was evaluated, without real-data fine-tuning, on the 1,075 COCO-listed images from LOCO subset-1. The filtered set contains 594 pallet-jack boxes on 403 positive images and 672 negative images. The 65 JPGs without COCO image records were excluded.
+Experiment 1's synthetic-trained checkpoint was evaluated, without real-data fine-tuning, on the 1,075 COCO-listed images from LOCO subset-1. The filtered set contains 594 boxes from LOCO's broad `pallet_truck` category on 403 positive images and 672 images without that category's box. The 65 JPGs without COCO image records were excluded. The current target includes manual and electric pallet trucks but excludes stackers. LOCO does not separate those subtypes, so these labels and metrics are historical broad-category diagnostics, not verified current-scope results.
 
 | External evaluation | Images | Boxes | Precision | Recall | mAP50 | mAP50–95 |
 |---|---:|---:|---:|---:|---:|---:|

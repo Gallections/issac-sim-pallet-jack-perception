@@ -32,24 +32,22 @@ class ResolveLocalPalletjackUsdzPathsTests(unittest.TestCase):
 
         self.assertEqual(subframe_values, [10])
 
-    def test_resolves_both_experiment_two_assets_from_script_location(self) -> None:
+    def test_resolves_only_the_local_electric_pallet_truck_as_a_positive_target(self) -> None:
         with tempfile.TemporaryDirectory(dir=PROJECT_ROOT) as temporary_directory:
             root = Path(temporary_directory)
             script_path = root / "simulation" / "scripts" / "palletjack_sdg" / "standalone_palletjack_sdg.py"
             script_path.parent.mkdir(parents=True)
             script_path.touch()
 
-            asset_directory = root / "simulation" / "assets" / "pallet_jacks" / "experiment-02"
+            asset_directory = root / "simulation" / "assets" / "pallet_jacks"
             asset_directory.mkdir(parents=True)
-            filenames = ("electric_pallet_jack.usdz", "pallet_jack_advanced.usdz")
-            for filename in filenames:
-                (asset_directory / filename).touch()
+            (asset_directory / "electric_pallet_jack.usdz").touch()
 
             resolved_paths = resolve_local_palletjack_usdz_paths(script_path)
 
             self.assertEqual(
                 resolved_paths,
-                [asset_directory / filename for filename in filenames],
+                [asset_directory / "electric_pallet_jack.usdz"],
             )
 
     def test_reports_missing_local_asset_names(self) -> None:
