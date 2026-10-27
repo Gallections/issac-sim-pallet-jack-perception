@@ -1,0 +1,15 @@
+# Reuse existing prepared splits; no image copies or new simulation outputs.
+# Experiment 2 is omitted because its stacker annotations conflict with the
+# current target policy (stackers are hard negatives).
+path: ../data/processed/experiment-01
+train:
+  - images/train
+  - ../experiment-03/images/train
+val:
+  - images/val
+  - ../experiment-03/images/val
+test:
+  - images/test
+  - ../experiment-03/images/test
+names:
+  0: palletjack

@@ -1,4 +1,4 @@
-"""Fine-tune one configured Ultralytics YOLO object detector."""
+"""Train one configured Ultralytics YOLO detector from pretrained weights or scratch."""
 
 from __future__ import annotations
 
@@ -57,7 +57,7 @@ def _save_run_reproducibility_files(
 
 
 def run_ultralytics_training(config: TrainingConfig) -> Path:
-    """Run configured fine-tuning and save the resolved experiment inputs."""
+    """Run configured training and save the resolved experiment inputs."""
     validate_training_config(config)
     # Import lazily so config preflight works without loading PyTorch or Ultralytics.
     try:
@@ -121,7 +121,7 @@ def _print_training_config(config: TrainingConfig) -> None:
 def main(argv: list[str] | None = None) -> int:
     """Validate the training settings or launch one configured run."""
     parser = argparse.ArgumentParser(
-        description="Fine-tune a pretrained Ultralytics YOLO detector on the processed dataset."
+        description="Train an Ultralytics YOLO detector on the processed dataset."
     )
     parser.add_argument(
         "--config",

@@ -93,21 +93,22 @@ The evaluation outputs, including `test_metrics.json`, confusion matrices, preci
 
 Small report snapshots are checked into `docs/assets/experiment-02/`. To reproduce either result, run `scripts/evaluate_test_set.py` with the corresponding `best.pt` checkpoint, `--dataset data/processed/experiment-02/dataset.yaml`, `--device 0`, `--imgsz 640`, `--batch 16`, and a new `--name`. The full metric summary stores absolute local paths, so use the documented repo-relative checkpoint and dataset locations when reproducing on another machine.
 
-## Experiment 2 LOCO real-image diagnostic
+## LOCO subset-1 real-image diagnostics
 
-The same two Experiment 2 checkpoints were evaluated on the processed LOCO subset-1 COCO adapter used for Experiment 1. This is the official LOCO validation subset. It contains 1,075 recorded images, 594 boxes from the broad `pallet_truck` category, 403 images with at least one such box, and 672 images with no such annotation; 65 additional JPGs without COCO records were excluded. LOCO does not distinguish manual/electric pallet trucks from stackers, so these metrics are not verified current-target detection scores. The evaluation used 640 input size, batch 16, four workers, and CUDA device 0.
+The Experiment 1, both Experiment 2, and Experiment 3 checkpoints were evaluated on the same processed LOCO subset-1 COCO adapter. This is the official LOCO validation subset. It contains 1,075 recorded images, 594 boxes from the broad `pallet_truck` category, 403 images with at least one such box, and 672 images with no such annotation; 65 additional JPGs without COCO records were excluded. LOCO does not distinguish manual/electric pallet trucks from stackers, so these metrics are not verified current-target detection scores. The evaluations used 640 input size, batch 16, four workers, and CUDA device 0.
 
 | Model | Images | Boxes | Precision | Recall | mAP50 | mAP50-95 |
 |---|---:|---:|---:|---:|---:|---:|
 | Experiment 1 baseline (previous evaluation) | 1,075 | 594 | 0.4113 | 0.1768 | 0.1430 | 0.0600 |
 | Experiment 2, `yolo26n.pt` initialization | 1,075 | 594 | 0.3797 | 0.2828 | 0.2147 | 0.0830 |
 | Experiment 2, Experiment 1 `best.pt` initialization | 1,075 | 594 | 0.3947 | 0.2525 | 0.2239 | 0.0850 |
+| Experiment 3, `yolo26n.pt` initialization | 1,075 | 594 | 0.4218 | 0.2391 | 0.2015 | 0.0642 |
 
-Relative to the earlier Experiment 1 result, both Experiment 2 models score higher on recall and mAP, and lower on precision against the same broad LOCO category. The `yolo26n.pt` initialization has higher recall; the Experiment 1-checkpoint initialization has slightly higher precision and mAP. Both models still miss many labeled objects, and both mAP50-95 values remain below 0.09. Since the target scopes differ, these comparisons do not establish manual-pallet-jack accuracy or a deployment result.
+The Experiment 3 result has the highest precision of these models, but low recall and an mAP50-95 of 0.0642. The Experiment 2 models have higher mAP50 and mAP50-95 in this diagnostic. Since Experiment 2 used a different positive-label scope and LOCO's target boxes may include stackers, these comparisons do not establish current-target accuracy or a deployment result.
 
 The comparison is not an independent test of Experiment 2: this LOCO subset motivated the asset change, so model and data choices were informed by it. In addition, the COCO `pallet_truck` category has not been audited to separate in-scope manual/electric pallet trucks from stackers. This is a development diagnostic, not a general sim-to-real benchmark. See the [Experiment 2 record](experiments/experiment-02.md) for plotted results and details.
 
-### Per-image error audit at a fixed threshold
+### Experiment 2 per-image error audit at a fixed threshold
 
 The project generated an all-image comparison gallery using confidence ≥ 0.25 and one-to-one matches at IoU ≥ 0.50. This is a diagnostic operating point; it differs from Ultralytics' aggregate precision and recall, which use a selected confidence threshold.
 

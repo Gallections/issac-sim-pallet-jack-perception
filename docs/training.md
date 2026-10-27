@@ -4,11 +4,29 @@
 
 The completed first model run is **Experiment 1 (`EXP-001`)**. It fine-tuned `yolo26n.pt` on the 4,000-image synthetic training split using seed 42, 100 epochs, 640 input size, and batch size 16. The selected checkpoint is `runs/detect/palletjack-detection-yolo26n-seed42/weights/best.pt` (best validation mAP50–95 at epoch 89). The exact config and run artifacts are listed in the [Experiment 1 record](experiments/experiment-01.md). The LOCO images were not used for training.
 
-This stage fine-tunes an Ultralytics YOLO detector on a prepared synthetic dataset. The default Experiment 1 configuration reads `data/processed/experiment-01/dataset.yaml`. Experiment 2 uses two separate configurations, both pointed at `data/processed/experiment-02/dataset.yaml`: [`train_yolo_e2_pretrained.yaml`](../configs/train_yolo_e2_pretrained.yaml) starts from `yolo26n.pt`, while [`train_yolo_e2_exp01-best.yaml`](../configs/train_yolo_e2_exp01-best.yaml) starts from Experiment 1's selected `best.pt`. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
+This stage trains an Ultralytics YOLO detector on a prepared synthetic dataset, either from pretrained weights or from random initialization. The default Experiment 1 configuration reads `data/processed/experiment-01/dataset.yaml`. Experiment 2 uses two separate configurations, both pointed at `data/processed/experiment-02/dataset.yaml`: [`train_yolo_e2_pretrained.yaml`](../configs/train_yolo_e2_pretrained.yaml) starts from `yolo26n.pt`, while [`train_yolo_e2_exp01-best.yaml`](../configs/train_yolo_e2_exp01-best.yaml) starts from Experiment 1's selected `best.pt`. Training uses the train split and checks validation metrics during training; it does not evaluate the held-out test set or real photographs.
 
 Experiment 2's raw dataset preparation and both training runs are complete. Validation metrics were calculated each epoch and used to select each run's `best.pt`; the held-out test set was evaluated afterward in a separate command. The run configurations and results are documented in the [Experiment 2 record](experiments/experiment-02.md). The test run directories are `runs/detect/experiment-02/palletjack-detection-yolo26n-pretrained-seed42-experiment-02-test/` and `runs/detect/experiment-02/palletjack-detection-exp01-best-seed42-experiment-02-test/`.
 
-Experiment 3 has not reached training preparation: its raw images and KITTI labels are under `data/raw/experiment-03/`, but there is no split or processed dataset yet. Raw validation found a zero-width box that must be resolved before creating training inputs. Track its data status in the [Experiment 3 record](experiments/experiment-03.md).
+Experiment 3 has completed raw validation, seeded splitting, data processing, training from `yolo26n.pt`, and held-out synthetic test evaluation. The training and test run configurations, metrics, and artifact paths are in the [Experiment 3 record](experiments/experiment-03.md).
+
+Experiment 4 is prepared as a pretrained-versus-scratch comparison using the same Experiment 1 + Experiment 3 split lists. Its dataset YAML references existing processed data directly; it does not make image copies or require new simulation collection. Experiment 2 is excluded because its stacker-positive labels conflict with the current target policy. See the [Experiment 4 record](experiments/experiment-04.md) for exact counts and the reused-test limitation. Both runs use 100 epochs, `imgsz=640`, batch 16, seed 42, automatic device selection, and four workers; only model initialization and run name differ.
+
+Validate both configs before starting either run:
+
+```bash
+python scripts/train_yolo.py --config configs/train_yolo_e4_pretrained.yaml --validate-only
+python scripts/train_yolo.py --config configs/train_yolo_e4_scratch.yaml --validate-only
+```
+
+Launch each training run manually after reviewing its preflight output:
+
+```bash
+python scripts/train_yolo.py --config configs/train_yolo_e4_pretrained.yaml
+python scripts/train_yolo.py --config configs/train_yolo_e4_scratch.yaml
+```
+
+The pretrained arm uses `yolo26n.pt`; the scratch arm uses `yolo26n.yaml` and starts from randomly initialized weights. Both configs read `configs/experiment-04-dataset.yaml`. Training has not been launched as part of preparing this setup.
 
 These are the original preflight and training commands for the `yolo26n.pt`-initialized run:
 

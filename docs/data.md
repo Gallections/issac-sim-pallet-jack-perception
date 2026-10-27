@@ -1,8 +1,8 @@
 # Data workflow
 
-The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and was used for two completed training runs. Experiment 3 (`EXP-003`) has a separate raw collection under `data/raw/experiment-03/`, with the current manual/electric pallet-truck target scope and a target-free hard-negative condition. It has not yet been split or processed. See its [experiment record](experiments/experiment-03.md) for collection counts and the one outstanding annotation issue.
+The original Isaac Sim collections and LOCO diagnostic are documented in [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). Experiment 2 (`EXP-002`) has its own raw and processed roots and two completed training runs, but its original labels treat stackers as positive. Experiment 3 (`EXP-003`) has a separate raw collection under `data/raw/experiment-03/`, the current manual/electric pallet-truck target scope, and a target-free hard-negative condition; its data were validated, split, processed, trained, and evaluated. Experiment 4 (`EXP-004`) combines the existing processed Experiment 1 and 3 splits to compare pretrained and scratch initialization without another simulation run. See the [Experiment 4 record](experiments/experiment-04.md) for the exact data composition and label-scope rationale.
 
-This document records the current Isaac Sim synthetic-data export and the path into object-detection training. Synthetic inputs and experiment-specific derived outputs are isolated by experiment: Experiment 1 uses `data/raw/experiment-01/` and `data/processed/experiment-01/`; Experiment 2 uses the matching `experiment-02` folders. The LOCO source images are retained once under Experiment 1 because they were first used for its external evaluation; they can be reused as an evaluation set for later experiments without duplicating the large raw image collection.
+This document records the current Isaac Sim synthetic-data export and the path into object-detection training. Experiments 1–3 retain isolated raw and processed folders. Experiment 4 is a lightweight combined view: `configs/experiment-04-dataset.yaml` points at existing Experiment 1 and 3 processed split folders, so it does not duplicate their large image files. The LOCO source images are retained once under Experiment 1 because they were first used for external evaluation; their broad labels remain diagnostic until equipment subtypes are reviewed.
 
 ## Experiment-scoped layout
 
@@ -15,8 +15,10 @@ data/
 └── processed/
     ├── experiment-01/       # Experiment 1 manifests, synthetic dataset, and real-evaluation adapters
     ├── experiment-02/       # Experiment 2 manifests and derived datasets
-    └── experiment-03/       # Reserved for Experiment 3 manifests and derived data; not prepared yet
+    └── experiment-03/       # Experiment 3 manifests and derived data
 ```
+
+Experiment 4 does not create `data/raw/experiment-04/` or copy data into a new processed directory. Its tracked dataset definition combines the existing train, validation, and test paths from Experiments 1 and 3. Experiment 2 is omitted because stacker-positive labels conflict with the current policy.
 
 The Experiment 3 raw collection was generated with four groups: `distractors_warehouse/` (2,000 nominal target-positive frames), `distractors_additional/` (2,000), `no_distractors/` (1,000), and `hard_negatives/` (1,000 target-free frames). After image cleanup, 5,762 paired RGB/annotation files remain. The hard-negative run loads the combined warehouse and additional distractor pools, including local props and the stacker, then randomizes their poses and the camera per frame without adding pallet-truck targets. One `generate_data.bat` or `generate_data.sh` run generates all four groups. If the three positive groups are already collected and only hard negatives need another run, use `generate_hard_negatives.bat` or `generate_hard_negatives.sh`. Both options write under `experiment-03` and leave the other experiment folders unchanged. Change the full launcher's `EXPERIMENT_ID` setting to create a separate folder for a future collection.
 
@@ -125,7 +127,7 @@ The nominal collection contained 6,000 frames. Fully transparent-black RGB image
 | `no_distractors` | 969 | 3,869 | 59 |
 | **Total** | **5,762** | **14,616** | **1,482** |
 
-The cleanup removed 238 RGB/label pairs: 63 from `distractors_additional`, 52 from `distractors_warehouse`, 92 from `hard_negatives`, and 31 from `no_distractors`. Image and annotation stems currently match in every group. Raw KITTI validation was then run; it reported one remaining zero-width box in `distractors_warehouse/Camera/object_detection/1727.txt` (the third label row, with `x_min == x_max == 0`). This label must be corrected or removed before generating manifests and processed YOLO data. No Experiment 3 split, processing, training, or evaluation has been performed yet. See the [Experiment 3 record](experiments/experiment-03.md) for the full status and next step.
+The cleanup removed 238 RGB/label pairs: 63 from `distractors_additional`, 52 from `distractors_warehouse`, 92 from `hard_negatives`, and 31 from `no_distractors`. Image and annotation stems match in every group. Raw KITTI validation initially found a zero-width box in `distractors_warehouse/Camera/object_detection/1727.txt`; the invalid annotation row was removed, preserving the image and its three valid boxes. Validation was rerun and passed with no issues. The retained data were then split, processed, trained, and evaluated on the held-out synthetic test split. See the [Experiment 3 record](experiments/experiment-03.md) for split counts and model results.
 
 ## Experiment 1 synthetic train/validation/test split
 

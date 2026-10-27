@@ -1,0 +1,11 @@
+# Experiment 4: pretrained-versus-scratch comparison, random-init arm.
+model: yolo26n.yaml
+dataset_yaml: configs/experiment-04-dataset.yaml
+epochs: 100
+imgsz: 640
+batch: 16
+device: null
+seed: 42
+workers: 4
+project: runs/detect/experiment-04
+name: palletjack-detection-yolo26n-scratch-seed42

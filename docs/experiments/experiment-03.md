@@ -1,6 +1,6 @@
 # Experiment 3 — Current target scope and hard negatives
 
-**Status:** raw collection complete and invalid black frames removed. Raw KITTI validation found one zero-width box that must be resolved before data splitting and processing. No Experiment 3 split, training, or evaluation has been run.
+**Status:** dataset preparation, training from `yolo26n.pt`, and held-out synthetic test evaluation are complete. Raw collection cleanup and KITTI validation are documented below.
 
 ## Objective and label policy
 
@@ -52,17 +52,40 @@ python scripts/validate_dataset.py --root data/raw/experiment-03 `
   --scenario no_distractors
 ```
 
-The validator found one remaining malformed box in `distractors_warehouse/Camera/object_detection/1727.txt`: line 3 has `x_min == x_max == 0`, so it has zero width. The other labels passed the validator's structural and bounds checks. Resolve this row (by visually reviewing and correcting it, or removing the invalid annotation if it is not a valid target) and rerun validation before creating split manifests. The raw collection has not yet been visually audited end-to-end.
+The initial validation found one malformed box in `distractors_warehouse/Camera/object_detection/1727.txt`: line 3 had `x_min == x_max == 0`, so it had zero width. The frame was reviewed; its horizontal extent could not be recovered reliably from the image, so only that invalid annotation row was removed. The image and its other three valid boxes were retained. Validation was rerun and passed with no issues. This structural check is not a full visual audit of all images and labels.
 
-## Current preparation status and next steps
+## Split, processing, training, and held-out test results
 
-Experiment 3 is raw-only at this point. The data have not been split, copied into `data/processed/experiment-03/`, converted to YOLO labels, used for training, or evaluated. Experiment 1 and Experiment 2 processed datasets and checkpoints remain unchanged.
+The raw collection was split by generation condition using seed `42` and an 80/10/10 ratio. The processed dataset is at `data/processed/experiment-03/`; it contains normalized YOLO labels while retaining the source KITTI annotations.
 
-After the zero-width annotation is resolved and validation passes:
+| Split | Images | Ground-truth boxes |
+|---|---:|---:|
+| Train | 4,608 | 11,653 |
+| Validation | 577 | 1,510 |
+| Test | 577 | 1,453 |
 
-1. Review representative images and labels from each positive condition and the hard-negative group.
-2. Create an experiment-specific seeded 80/10/10 split, keeping each generation condition represented in all splits.
-3. Process the selected RGB/KITTI pairs into `data/processed/experiment-03/` and convert positive boxes to YOLO format. Empty hard-negative labels must remain empty YOLO label files paired with their images.
-4. Train and evaluate a new model on the Experiment 3 split; compare against earlier models with the dataset and label-policy differences made explicit.
+A YOLO26n detector initialized from `yolo26n.pt` was trained for 100 epochs at `imgsz=640`, batch size 16, seed `42`, with four workers on an NVIDIA GeForce RTX 5080 Laptop GPU. The best validation checkpoint was epoch 83, selected by mAP50–95 (0.64275). Its validation precision was 0.85457, recall 0.69656, and mAP50 0.78304.
 
-Do not treat the current 5,762-image raw inventory as training-ready until the outstanding annotation and visual-review steps are complete.
+The selected checkpoint was evaluated once on the held-out test split:
+
+| Test metric | Result |
+|---|---:|
+| Precision | 0.8538 |
+| Recall | 0.7032 |
+| mAP50 | 0.7875 |
+| mAP50–95 | 0.6480 |
+
+Evaluation used 577 images and 1,453 labeled objects. The run used `imgsz=640`, batch size 16, four workers, and CUDA device `0`. The test run artifacts and plots are in `runs/detect/experiment-03/palletjack-detection-yolo26n-pretrained-seed42-experiment-03-test/`; the trained checkpoint is `runs/detect/experiment-03/palletjack-detection-yolo26n-pretrained-seed42-experiment-03/weights/best.pt`. Generated run artifacts are gitignored.
+
+Reproduce the test evaluation from the repository root with:
+
+```powershell
+python scripts/evaluate_test_set.py `
+  --model runs/detect/experiment-03/palletjack-detection-yolo26n-pretrained-seed42-experiment-03/weights/best.pt `
+  --dataset data/processed/experiment-03/dataset.yaml `
+  --project runs/detect/experiment-03 `
+  --name palletjack-detection-yolo26n-pretrained-seed42-experiment-03-test `
+  --imgsz 640 --batch 16 --workers 4 --device 0
+```
+
+The Experiment 3 test result is below the historical Experiment 1 and Experiment 2 test scores, but the experiments use different generated data and target-label policies. This is not a controlled comparison. The test set is synthetic; real-world generalization remains an open question, and the broad LOCO labels do not reliably separate in-scope pallet trucks from forklift stackers.
