@@ -22,9 +22,9 @@ Replicator exports 960×544 RGB images and KITTI-style 2D object-detection label
 |---|---|---|
 | **1 — baseline** | 5,000 frames: 2,000 warehouse distractors, 2,000 additional distractors, 1,000 no added distractors | Original NVIDIA pallet-jack asset mix |
 | **2 — expanded assets (historical label scope)** | 4,824 retained frames across the same three conditions | Two local USDZ assets (powered electric pallet truck and forklift stacker) were labeled positive; 176 transparent-black RGB frames and paired labels removed, and three zero-width annotation rows removed |
-| **3 — hard negatives (configured, not yet generated)** | Planned 1,000 target-free frames under `data/raw/experiment-03/distractors_only/` | Eight sampled props from both existing pools and four local USDZ distractors, plus one forklift stacker per frame; empty object labels expected |
+| **3 — expanded collection (configured, not yet generated)** | Planned 6,000 frames under `data/raw/experiment-03/`: 5,000 target-positive frames across three conditions and 1,000 target-free hard negatives | Current target policy: manual and electric pallet trucks are positive; stackers and the other local USDZ props are unlabeled distractors. The hard-negative group uses eight sampled props plus one stacker per frame; empty object labels expected |
 
-The raw exports, simulator requirements, randomization settings, and cleanup details are documented in the [simulation guide](simulation/README.md) and the [Experiment 1](docs/experiments/experiment-01.md) and [Experiment 2](docs/experiments/experiment-02.md) records. Experiment 3 has a dedicated launcher, but its output still needs to be generated and visually checked.
+The raw exports, simulator requirements, randomization settings, and cleanup details are documented in the [simulation guide](simulation/README.md) and the [Experiment 1](docs/experiments/experiment-01.md) and [Experiment 2](docs/experiments/experiment-02.md) records. For Experiment 3, one `generate_data.bat` or `generate_data.sh` run creates all four groups under `data/raw/experiment-03/`; the output still needs to be generated and visually checked.
 
 | Warehouse distractors | Additional distractors | No added distractors |
 |---|---|---|
@@ -116,7 +116,7 @@ These selected scenes illustrate failure modes; they are not a representative sa
 
 ## 6. Interpretation, limitations, and next work
 
-The real-image error audit suggested limited hard-negative coverage may contribute to false detections, but the LOCO labels do not separate in-scope pallet trucks from stackers. The earlier audit counts and metrics therefore cannot establish current-target false-positive or false-negative rates. Experiment 3 is configured to add target-free scenes with stackers; its output must be reviewed and processed before any new training comparison.
+The real-image error audit suggested limited hard-negative coverage may contribute to false detections, but the LOCO labels do not separate in-scope pallet trucks from stackers. The earlier audit counts and metrics therefore cannot establish current-target false-positive or false-negative rates. Experiment 3 is configured to recollect all three positive-scene conditions with the current asset mix and add target-free scenes with stackers; all its output must be reviewed and processed before any new training comparison.
 
 Interpret these results with the following limits in mind:
 
@@ -126,7 +126,7 @@ Interpret these results with the following limits in mind:
 - **One training seed per configuration.** The small Experiment 2 initialization difference may reflect run variation; repeated seeds and a controlled ablation are needed to establish a reliable effect.
 - **Deployment is not evaluated.** No inference integration, runtime benchmark, or real-system validation in Isaac Sim has been completed.
 
-Next, generate and review the Experiment 3 stacker hard negatives, audit LOCO labels to separate pallet trucks from stackers, then process and train a controlled comparison. Reserve an independent real-image holdout and repeat training/evaluation with multiple seeds before drawing transfer conclusions.
+Next, generate and review all Experiment 3 positive and hard-negative groups, audit LOCO labels to separate pallet trucks from stackers, then process and train a controlled comparison. Reserve an independent real-image holdout and repeat training/evaluation with multiple seeds before drawing transfer conclusions.
 
 ## 7. Reproducibility and project materials
 

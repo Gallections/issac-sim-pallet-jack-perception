@@ -84,7 +84,7 @@ from omni.isaac.core.utils.semantics import get_semantics
 
 # Increase subframes if shadows/ghosting appears of moving objects
 # See known issues: https://docs.omniverse.nvidia.com/prod_extensions/prod_extensions/ext_replicator.html#known-issues
-rep.settings.carb_settings("/omni/replicator/RTSubframes", 10)
+rep.settings.carb_settings("/omni/replicator/RTSubframes", 32)
 
 
 # This is the location of the palletjacks in the simready asset library

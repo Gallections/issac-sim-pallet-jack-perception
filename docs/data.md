@@ -1,6 +1,6 @@
 # Data workflow
 
-The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and was used for two completed training runs. Experiment 3 has a configured target-free hard-negative generator, with raw output reserved under `data/raw/experiment-03/`; it has not yet been generated or processed. This guide explains how those raw sources map to processed model inputs.
+The original Isaac Sim collections and LOCO diagnostic are the datasets used for [Experiment 1 (`EXP-001`)](experiments/experiment-01.md). The new Isaac Sim asset collection is [Experiment 2 (`EXP-002`)](experiments/experiment-02.md); it has its own raw and processed roots and was used for two completed training runs. Experiment 3 adds new target-positive collections and a target-free hard-negative collection under `data/raw/experiment-03/`; it has not yet been generated or processed. This guide explains how those raw sources map to processed model inputs.
 
 This document records the current Isaac Sim synthetic-data export and the path into object-detection training. Synthetic inputs and experiment-specific derived outputs are isolated by experiment: Experiment 1 uses `data/raw/experiment-01/` and `data/processed/experiment-01/`; Experiment 2 uses the matching `experiment-02` folders. The LOCO source images are retained once under Experiment 1 because they were first used for its external evaluation; they can be reused as an evaluation set for later experiments without duplicating the large raw image collection.
 
@@ -11,12 +11,14 @@ data/
 ├── raw/
 │   ├── experiment-01/       # Original synthetic exports and LOCO source files used for Experiment 1
 │   ├── experiment-02/       # New Isaac Sim exports for Experiment 2
-│   └── experiment-03/       # Planned target-free hard-negative Isaac Sim export
+│   └── experiment-03/       # New positive-scene groups and target-free hard negatives
 └── processed/
     ├── experiment-01/       # Experiment 1 manifests, synthetic dataset, and real-evaluation adapters
     ├── experiment-02/       # Experiment 2 manifests and derived datasets
     └── experiment-03/       # Processed Experiment 3 data (not created yet)
 ```
+
+The Experiment 3 raw folder will contain `distractors_warehouse/` (2,000 positive-target frames), `distractors_additional/` (2,000), `no_distractors/` (1,000), and `hard_negatives/` (1,000 target-free frames). One `generate_data.bat` or `generate_data.sh` run generates all four groups and creates the output directories under `experiment-03`; it leaves the existing experiment folders unchanged. Change the launcher's `EXPERIMENT_ID` setting to create a separate folder for a future collection.
 
 The validation, split, processing, training, and evaluation defaults continue to target Experiment 1. To work on another experiment, pass its raw and processed roots to the preparation commands and select its training config. This keeps existing baseline commands reproducible and prevents a new experiment from replacing prior data. Experiments 1 and 2 reuse the same processed LOCO adapter, but its broad `pallet_truck` annotations have not been audited to distinguish in-scope manual/electric pallet trucks from stackers. They are not verified labels for the current target.
 

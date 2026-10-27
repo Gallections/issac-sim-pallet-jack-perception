@@ -271,15 +271,29 @@ class HardNegativeAssetTests(unittest.TestCase):
             )
         )
 
-    def test_hard_negative_generator_has_a_separate_experiment_three_launcher(self) -> None:
+    def test_single_experiment_three_launcher_generates_positive_and_hard_negative_groups(self) -> None:
         script_directory = PROJECT_ROOT / "simulation" / "scripts"
+        for filename in ("generate_data.bat", "generate_data.sh"):
+            contents = (script_directory / filename).read_text(encoding="utf-8")
+            self.assertIn("experiment-03", contents)
+            self.assertIn("hard_negatives", contents)
+            self.assertIn("--distractors-only", contents)
+            self.assertIn("distractors_warehouse", contents)
+            self.assertIn("distractors_additional", contents)
+            self.assertIn("no_distractors", contents)
+            self.assertGreaterEqual(contents.count("--data_dir"), 4)
+
         for filename in ("generate_hard_negatives.bat", "generate_hard_negatives.sh"):
+            self.assertFalse((script_directory / filename).exists())
+
+    def test_regular_generation_launchers_write_experiment_three_without_touching_experiment_two(self) -> None:
+        script_directory = PROJECT_ROOT / "simulation" / "scripts"
+        for filename in ("generate_data.bat", "generate_data.sh"):
             launcher = script_directory / filename
-            self.assertTrue(launcher.is_file())
             contents = launcher.read_text(encoding="utf-8")
             self.assertIn("experiment-03", contents)
-            self.assertIn("distractors_only", contents)
-            self.assertIn("--distractors-only", contents)
+            self.assertNotIn("experiment-02", contents)
+            self.assertIn("mkdir", contents.lower())
 
 
 if __name__ == "__main__":
