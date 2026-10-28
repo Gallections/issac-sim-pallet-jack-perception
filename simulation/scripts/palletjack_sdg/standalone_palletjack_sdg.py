@@ -276,10 +276,10 @@ def add_palletjacks():
         rep.create.from_usd(path, semantics=[("class", "palletjack")], count=2)
         for path in LOCAL_PALLETJACKS
     ]
-    local_randomized_material_objects = [
-        rep.create.from_usd(path, semantics=[("class", "palletjack")], count=1)
-        for path in LOCAL_PALLETJACKS
-    ]
+    # local_randomized_material_objects = [
+    #     rep.create.from_usd(path, semantics=[("class", "palletjack")], count=1)
+    #     for path in LOCAL_PALLETJACKS
+    # ]
     return (
         rep.create.group(original_palletjack_objects),
         rep.create.group(local_original_material_objects),

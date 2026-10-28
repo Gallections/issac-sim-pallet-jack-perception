@@ -1,5 +1,18 @@
 # Isaac Sim Pallet-Jack Detection
 
+<table>
+  <tr>
+    <td align="center"><a href="docs/assets/real-loco/experiment-showcase/experiment-01.jpg"><img src="docs/assets/real-loco/experiment-showcase/experiment-01.jpg" width="460" alt="Experiment 1 model detects a manual pallet jack in a warehouse"></a><br><b>Experiment 1 · baseline</b><br>One manual pallet jack detected.</td>
+    <td align="center"><a href="docs/assets/real-loco/experiment-showcase/experiment-02.jpg"><img src="docs/assets/real-loco/experiment-showcase/experiment-02.jpg" width="460" alt="Experiment 2 model predictions in a warehouse with several pallet trucks"></a><br><b>Experiment 2 · expanded assets</b><br>Three predictions in a cluttered multi-truck scene.</td>
+  </tr>
+  <tr>
+    <td align="center"><a href="docs/assets/real-loco/experiment-showcase/experiment-03.jpg"><img src="docs/assets/real-loco/experiment-showcase/experiment-03.jpg" width="460" alt="Experiment 3 model detects one pallet jack in a crowded and occluded warehouse scene"></a><br><b>Experiment 3 · hard negatives</b><br>One detection in a heavily occluded scene; several labeled objects are missed.</td>
+    <td align="center"><a href="docs/assets/real-loco/experiment-showcase/experiment-04.jpg"><img src="docs/assets/real-loco/experiment-showcase/experiment-04.jpg" width="460" alt="Experiment 4 model detects two pallet jacks among warehouse boxes and equipment"></a><br><b>Experiment 4 · combined data</b><br>Two pallet-jack detections among stacked goods.</td>
+  </tr>
+</table>
+
+*Each image is a separate LOCO subset-1 scene annotated by that experiment's pretrained checkpoint (confidence threshold 0.25). These selected examples illustrate model outputs, not aggregate performance. LOCO's broad `pallet_truck` labels may include stackers outside the project's current target definition.*
+
 An experimental pipeline for generating automatically labeled pallet-jack images in NVIDIA Isaac Sim, fine-tuning an Ultralytics YOLO detector, and measuring its performance on synthetic and real warehouse images.
 
 ## Abstract
