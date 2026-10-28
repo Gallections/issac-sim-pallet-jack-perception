@@ -10,7 +10,7 @@ Experiment 2's raw dataset preparation and both training runs are complete. Vali
 
 Experiment 3 has completed raw validation, seeded splitting, data processing, training from `yolo26n.pt`, and held-out synthetic test evaluation. The training and test run configurations, metrics, and artifact paths are in the [Experiment 3 record](experiments/experiment-03.md).
 
-Experiment 4 is prepared as a pretrained-versus-scratch comparison using the same Experiment 1 + Experiment 3 split lists. Its dataset YAML references existing processed data directly; it does not make image copies or require new simulation collection. Experiment 2 is excluded because its stacker-positive labels conflict with the current target policy. See the [Experiment 4 record](experiments/experiment-04.md) for exact counts and the reused-test limitation. Both runs use 100 epochs, `imgsz=640`, batch 16, seed 42, automatic device selection, and four workers; only model initialization and run name differ.
+Experiment 4 completed a pretrained-versus-scratch comparison using the same Experiment 1 + Experiment 3 split lists. Its dataset YAML references existing processed data directly; it does not make image copies or require new simulation collection. Experiment 2 is excluded because its stacker-positive labels conflict with the current target policy. See the [Experiment 4 record](experiments/experiment-04.md) for exact counts, results, and the reused-test limitation. Both runs used 100 epochs, `imgsz=640`, batch 16, seed 42, automatic device selection, and four workers; only model initialization and run name differed.
 
 Validate both configs before starting either run:
 
@@ -26,7 +26,7 @@ python scripts/train_yolo.py --config configs/train_yolo_e4_pretrained.yaml
 python scripts/train_yolo.py --config configs/train_yolo_e4_scratch.yaml
 ```
 
-The pretrained arm uses `yolo26n.pt`; the scratch arm uses `yolo26n.yaml` and starts from randomly initialized weights. Both configs read `configs/experiment-04-dataset.yaml`. Training has not been launched as part of preparing this setup.
+The pretrained arm used `yolo26n.pt`; the scratch arm used `yolo26n.yaml` and started from randomly initialized weights. Both configs read `configs/experiment-04-dataset.yaml`. Both training runs and their synthetic-test and LOCO evaluations are complete; results are recorded in the [Experiment 4 record](experiments/experiment-04.md). The commands above are retained for reproducibility.
 
 These are the original preflight and training commands for the `yolo26n.pt`-initialized run:
 

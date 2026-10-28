@@ -21,13 +21,13 @@ python scripts/evaluate_test_set.py \
   --device 0 --imgsz 640 --batch 16 --workers 4
 ```
 
-The conversion report contains 1,075 images: 403 with 594 boxes from LOCO's broad `pallet_truck` category and 672 with no box in that category. The 65 additional JPGs without COCO image records are excluded. LOCO does not separate manual and electric pallet trucks from stackers in this category, so the boxes have not been verified against the project's current target (manual and electric pallet trucks; stackers excluded). These numbers and metrics below must be treated as broad-category diagnostics until the images are reviewed and relabeled for that target. Evaluation ran on CUDA device 0 (NVIDIA GeForce RTX 5080 Laptop GPU), using the Isaac Sim-trained YOLO26n checkpoint, 640 input size, batch 16, and 4 data workers. Metrics are written to `runs/detect/palletjack-detection-yolo26n-seed42-real-loco-subset1/test_metrics.json`; Ultralytics also writes precision/recall curves, confusion matrices, and sample label/prediction montages to that run folder.
+The conversion report contains 1,075 images: 403 with 594 boxes from LOCO's broad `pallet_truck` category and 672 with no box in that category. The 65 additional JPGs without COCO image records are excluded. A visual spot-check suggests the boxes generally surround material-handling equipment, but LOCO does not separate manual and electric pallet trucks from stackers. The annotations have not been comprehensively subtype-audited against the project's target, so these metrics remain broad-category diagnostics. Evaluation ran on CUDA device 0 (NVIDIA GeForce RTX 5080 Laptop GPU), using the Isaac Sim-trained YOLO26n checkpoint, 640 input size, batch 16, and 4 data workers. Metrics are written to `runs/detect/palletjack-detection-yolo26n-seed42-real-loco-subset1/test_metrics.json`; Ultralytics also writes precision/recall curves, confusion matrices, and sample label/prediction montages to that run folder.
 
 | Dataset | Images | LOCO `pallet_truck` boxes | Precision | Recall | mAP50 | mAP50–95 |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | LOCO subset-1 real evaluation | 1,075 | 594 | 0.4113 | 0.1768 | 0.1430 | 0.0600 |
 
-These results show weak transfer from this synthetic-trained baseline to the selected LOCO images. The scores are evidence about this dataset and checkpoint; they do not by themselves determine whether the gap comes from visual domain shift, annotation conventions, label quality, or model operating behavior. LOCO subset-1 is an official validation subset, and the project has not completed a comprehensive annotation audit. Treat this as an external evaluation and diagnostic, not a broad deployment benchmark or an untouched final test for future tuning. Keep the result separate from synthetic held-out metrics.
+These results show weak agreement between this synthetic-trained baseline and the selected LOCO labels. The scores do not by themselves determine whether the gap comes from visual domain shift, annotation conventions, class scope, or model behavior. A spot-check found generally plausible box placement, but the project has not completed a comprehensive annotation or subtype audit. LOCO subset-1 is an official validation subset; treat this as a diagnostic, not a broad deployment benchmark or untouched final test. Keep it separate from synthetic held-out metrics.
 
 Selected small snapshots are checked into `docs/assets/real-loco/`; complete run artifacts remain in the ignored `runs/` directory.
 
@@ -95,7 +95,7 @@ Small report snapshots are checked into `docs/assets/experiment-02/`. To reprodu
 
 ## LOCO subset-1 real-image diagnostics
 
-The Experiment 1, both Experiment 2, and Experiment 3 checkpoints were evaluated on the same processed LOCO subset-1 COCO adapter. This is the official LOCO validation subset. It contains 1,075 recorded images, 594 boxes from the broad `pallet_truck` category, 403 images with at least one such box, and 672 images with no such annotation; 65 additional JPGs without COCO records were excluded. LOCO does not distinguish manual/electric pallet trucks from stackers, so these metrics are not verified current-target detection scores. The evaluations used 640 input size, batch 16, four workers, and CUDA device 0.
+All six trained checkpoints from Experiments 1–4 were evaluated on the same processed LOCO subset-1 COCO adapter. This is the official LOCO validation subset. It contains 1,075 recorded images, 594 boxes from the broad `pallet_truck` category, 403 images with at least one such box, and 672 images with no such annotation; 65 additional JPGs without COCO records were excluded. LOCO does not distinguish manual/electric pallet trucks from stackers, so these metrics are not verified current-target detection scores. The evaluations used 640 input size, batch 16, four workers, and CUDA device 0.
 
 | Model | Images | Boxes | Precision | Recall | mAP50 | mAP50-95 |
 |---|---:|---:|---:|---:|---:|---:|
@@ -103,8 +103,10 @@ The Experiment 1, both Experiment 2, and Experiment 3 checkpoints were evaluated
 | Experiment 2, `yolo26n.pt` initialization | 1,075 | 594 | 0.3797 | 0.2828 | 0.2147 | 0.0830 |
 | Experiment 2, Experiment 1 `best.pt` initialization | 1,075 | 594 | 0.3947 | 0.2525 | 0.2239 | 0.0850 |
 | Experiment 3, `yolo26n.pt` initialization | 1,075 | 594 | 0.4218 | 0.2391 | 0.2015 | 0.0642 |
+| Experiment 4, `yolo26n.pt` initialization | 1,075 | 594 | 0.5615 | 0.2350 | 0.2240 | 0.0848 |
+| Experiment 4, random initialization | 1,075 | 594 | 0.4630 | 0.1919 | 0.1635 | 0.0546 |
 
-The Experiment 3 result has the highest precision of these models, but low recall and an mAP50-95 of 0.0642. The Experiment 2 models have higher mAP50 and mAP50-95 in this diagnostic. Since Experiment 2 used a different positive-label scope and LOCO's target boxes may include stackers, these comparisons do not establish current-target accuracy or a deployment result.
+The Experiment 4 pretrained model has the highest precision in this diagnostic (0.5615), but its recall remains low (0.2350). Its mAP50–95 of 0.0848 is close to the highest listed result (0.0850 for Experiment 2 initialized from Experiment 1). The Experiment 4 pretrained model scores higher than its scratch counterpart on all four metrics. Since LOCO's broad target boxes may include stackers, these results do not establish current-target accuracy or a deployment result. See the [Experiment 4 record](experiments/experiment-04.md) for the synthetic-test comparison and output paths.
 
 The comparison is not an independent test of Experiment 2: this LOCO subset motivated the asset change, so model and data choices were informed by it. In addition, the COCO `pallet_truck` category has not been audited to separate in-scope manual/electric pallet trucks from stackers. This is a development diagnostic, not a general sim-to-real benchmark. See the [Experiment 2 record](experiments/experiment-02.md) for plotted results and details.
 

@@ -2,7 +2,7 @@
 
 ## Current status
 
-The project has not yet connected a trained detector to a live Isaac Sim camera. Training and the current prediction/evaluation tools run outside Isaac Sim with Ultralytics. The Experiment 1 and Experiment 2 checkpoints are `.pt` files, and the real-image prediction script can draw detections on saved photos. No simulator-side inference runtime, exported deployment model, or latency measurement has been established.
+The project has not yet connected a trained detector to a live Isaac Sim camera. Training and the current prediction/evaluation tools run outside Isaac Sim with Ultralytics. The Experiment 1–4 checkpoints are `.pt` files, and the real-image prediction script can draw detections on saved photos. No simulator-side inference runtime, exported deployment model, or latency measurement has been established.
 
 The training source images are 960×544; Ultralytics receives them at a configured 640-pixel input size while preserving aspect ratio. The simulator integration must verify that its camera image color order, resizing/letterboxing, normalization, and box-coordinate mapping match the behavior used by the trained model.
 

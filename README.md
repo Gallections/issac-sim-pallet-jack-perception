@@ -23,7 +23,7 @@ Replicator exports 960×544 RGB images and KITTI-style 2D object-detection label
 | **1 — baseline** | 5,000 frames: 2,000 warehouse distractors, 2,000 additional distractors, 1,000 no added distractors | Original NVIDIA pallet-jack asset mix |
 | **2 — expanded assets (historical label scope)** | 4,824 retained frames across the same three conditions | Two local USDZ assets (powered electric pallet truck and forklift stacker) were labeled positive; 176 transparent-black RGB frames and paired labels removed, and three zero-width annotation rows removed |
 | **3 — current target and hard negatives (raw collection complete)** | 6,000 generated frames; 5,762 retained after removing 238 invalid black RGB frames and paired labels | Manual and electric pallet trucks are positive in three conditions; 908 retained target-free frames contain warehouse props, local distractors, and the stacker |
-| **4 — initialization comparison (prepared from existing data)** | Reuses Experiment 1 and 3 processed splits; no new simulator run | Compares `yolo26n.pt` fine-tuning with `yolo26n.yaml` random initialization; Experiment 2 excluded because its stacker boxes conflict with the current label policy |
+| **4 — initialization comparison (trained and evaluated)** | Reuses Experiment 1 and 3 processed splits; no new simulator run | Compares `yolo26n.pt` fine-tuning with `yolo26n.yaml` random initialization; Experiment 2 excluded because its stacker boxes conflict with the current label policy |
 
 The raw exports, simulator requirements, randomization settings, and cleanup details are documented in the [simulation guide](simulation/README.md) and the [Experiment 1](docs/experiments/experiment-01.md), [Experiment 2](docs/experiments/experiment-02.md), and [Experiment 3](docs/experiments/experiment-03.md) records. Experiment 4 reuses existing processed data and requires no simulator run; its paired training setup is described in the [Experiment 4 record](docs/experiments/experiment-04.md).
 
@@ -44,9 +44,9 @@ Raw synthetic labels are validated, assigned to train/validation/test manifests,
 | 3 | 4,608 | 577 | 577 | 1,453 |
 | 4 | 8,608 | 1,077 | 1,077 | 2,880 |
 
-For real-image evaluation, the project uses [LOCO (Logistics Objects in Context)](https://github.com/tum-fml/loco), an annotated logistics-scene dataset. The current adapter retains 1,075 COCO-listed images from subset-1 and filters the broad `pallet_truck` category, producing 594 boxes in 403 images. LOCO does not distinguish manual and electric pallet trucks from stackers in that category, so those 594 boxes are **not yet verified ground truth for the current target**. The prior LOCO metrics must be read as measurements against the broad LOCO category, not definitive pallet-truck accuracy. An additional 65 JPGs without COCO image records are excluded because their labels are unknown. COCO boxes are converted to YOLO format only as an adapter for the existing Ultralytics evaluator; the COCO annotations remain the source labels.
+For real-image evaluation, the project uses [LOCO (Logistics Objects in Context)](https://github.com/tum-fml/loco), an annotated logistics-scene dataset. The current adapter retains 1,075 COCO-listed images from subset-1 and filters the broad `pallet_truck` category, producing 594 boxes in 403 images. A visual spot-check suggests the boxes generally surround material-handling equipment, but LOCO does not distinguish manual and electric pallet trucks from stackers. The boxes are therefore **not verified ground truth for the project's exact target definition**, and the LOCO metrics measure agreement with the broader category. An additional 65 JPGs without COCO image records are excluded because their labels are unknown. COCO boxes are converted to YOLO format only as an adapter for the existing Ultralytics evaluator; the COCO annotations remain the source labels.
 
-The same processed LOCO adapter is reused for all four model evaluations completed to date. LOCO subset-1 is officially a validation subset; it is not an independent test set for this project.
+The same processed LOCO adapter is reused for all six completed model evaluations. LOCO subset-1 is officially a validation subset; it is not an independent test set for this project.
 
 ## 4. Models and evaluation protocol
 
@@ -61,7 +61,7 @@ All models use YOLO26n, a 640-pixel training input, batch size 16, 100 epochs, s
 | Experiment 4 pretrained | Experiments 1 + 3 | `yolo26n.pt` |
 | Experiment 4 scratch | Experiments 1 + 3 | `yolo26n.yaml` (random initialization) |
 
-Experiment 2 tests two initialization choices on the same Experiment 2 data and split. Experiment 4 is designed to compare initialization on the same combined Experiment 1 + 3 data and split. Experiment 2 is excluded from Experiment 4 because its stacker labels conflict with the current target definition. Cross-experiment scores remain descriptive, not controlled head-to-head comparisons.
+Experiment 2 tests two initialization choices on the same Experiment 2 data and split. Experiment 4 compared pretrained and scratch initialization on the same combined Experiment 1 + 3 data and split. Experiment 2 is excluded from Experiment 4 because its stacker labels conflict with the current target definition. Cross-experiment scores remain descriptive, not controlled head-to-head comparisons.
 
 | Model | Best validation epoch | Validation mAP50–95 |
 |---|---:|---:|
@@ -69,6 +69,8 @@ Experiment 2 tests two initialization choices on the same Experiment 2 data and 
 | Experiment 2 pretrained | 84 | 0.7242 |
 | Experiment 2 continued from Experiment 1 | 82 | 0.7264 |
 | Experiment 3 pretrained | 83 | 0.6428 |
+| Experiment 4 pretrained | 83 | 0.7385 |
+| Experiment 4 scratch | 91 | 0.6939 |
 
 ## 5. Results
 
@@ -80,14 +82,16 @@ Experiment 2 tests two initialization choices on the same Experiment 2 data and 
 | Experiment 2 pretrained | 482 | 2,307 | 0.9132 | 0.7847 | 0.8845 | 0.7380 |
 | Experiment 2 continued from Experiment 1 | 482 | 2,307 | 0.9108 | 0.7850 | 0.8795 | 0.7369 |
 | Experiment 3 pretrained | 577 | 1,453 | 0.8538 | 0.7032 | 0.7875 | 0.6480 |
+| Experiment 4 pretrained | 1,077 | 2,880 | 0.9090 | 0.7807 | 0.8672 | 0.7455 |
+| Experiment 4 scratch | 1,077 | 2,880 | 0.8731 | 0.7432 | 0.8349 | 0.6919 |
 
 Precision measures the fraction of predicted boxes that match a labeled object; recall measures the fraction of labeled objects found. mAP50 evaluates average precision at IoU 0.50, while mAP50–95 averages it across IoU thresholds from 0.50 to 0.95, rewarding tighter localization.
 
-The two Experiment 2 models are nearly tied on their shared test set: mAP50–95 differs by 0.0011. Initializing from Experiment 1 did not improve the Experiment 2 score in this run. Experiment 3 reached 0.6480 mAP50–95 on its own held-out synthetic test split. Its score is lower than the earlier test results, but the experiments use different generated datasets and target-label policies; this is not a controlled comparison. Synthetic test performance does not establish real-world performance.
+The two Experiment 2 models are nearly tied on their shared test set: mAP50–95 differs by 0.0011. In Experiment 4, the pretrained run exceeded the scratch run by 0.0536 mAP50–95 on their shared synthetic test split. Experiment 4 reuses the Experiment 1 and 3 test images, so comparisons with earlier experiments are descriptive rather than independent. Synthetic test performance does not establish real-world performance.
 
 ### 5.2 LOCO subset-1 diagnostic
 
-All four checkpoints trained so far were evaluated on the same LOCO images and annotations.
+All six trained checkpoints were evaluated on the same LOCO images and annotations.
 
 | Model | Precision | Recall | mAP50 | mAP50–95 |
 |---|---:|---:|---:|---:|
@@ -95,8 +99,10 @@ All four checkpoints trained so far were evaluated on the same LOCO images and a
 | Experiment 2 pretrained | 0.3797 | 0.2828 | 0.2147 | 0.0830 |
 | Experiment 2 continued from Experiment 1 | 0.3947 | 0.2525 | 0.2239 | 0.0850 |
 | Experiment 3 pretrained | 0.4218 | 0.2391 | 0.2015 | 0.0642 |
+| Experiment 4 pretrained | 0.5615 | 0.2350 | 0.2240 | 0.0848 |
+| Experiment 4 scratch | 0.4630 | 0.1919 | 0.1635 | 0.0546 |
 
-Experiment 3 has the highest precision of the four (0.4218), but recall remains low (0.2391); its mAP50–95 is 0.0642. Experiment 2 has the highest mAP50 and mAP50–95 in this diagnostic. These differences do not establish a controlled improvement because the training label scopes differ, and LOCO labels themselves have not been subtype-audited.
+Experiment 4 pretrained has the highest precision in this diagnostic (0.5615), while its recall remains low (0.2350). Its mAP50–95 (0.0848) is close to the highest recorded value (0.0850 for Experiment 2 continued from Experiment 1). The Experiment 4 pretrained model exceeds its scratch counterpart on all four metrics, but the broad LOCO category can include out-of-scope stackers, so these scores are not verified measures of the project's target class.
 
 ### 5.3 Fixed-threshold per-image audit
 
@@ -130,12 +136,12 @@ The real-image error audit suggested limited hard-negative coverage may contribu
 Interpret these results with the following limits in mind:
 
 - **LOCO is a development diagnostic.** Its subset-1 is officially a validation subset, and the observed appearance/scale gap informed Experiment 2. It is not an untouched final benchmark.
-- **LOCO labels do not fully match the current target scope.** The broad `pallet_truck` category may include stackers, so its old metrics are diagnostic until images and boxes are reviewed for equipment subtype.
+- **LOCO labels do not fully match the current target scope.** A visual spot-check found boxes generally located on equipment, but the broad `pallet_truck` category may include stackers. The metrics remain diagnostic until the examples are reviewed and labeled by subtype.
 - **Synthetic test sets differ.** Each experiment measures a different generated distribution and target-label policy; score changes across experiments are not controlled head-to-head comparisons.
 - **One training seed per configuration.** The small Experiment 2 initialization difference may reflect run variation; repeated seeds and a controlled ablation are needed to establish a reliable effect.
 - **Deployment is not evaluated.** No inference integration, runtime benchmark, or real-system validation in Isaac Sim has been completed.
 
-Experiment 4 is prepared but has not been trained. It reuses existing data and compares pretrained and scratch initialization. Its test split was held out from the Experiment 4 runs but was evaluated in earlier experiments, so it is not an untouched project-level benchmark. Review its results alongside the label-policy limitations above.
+Experiment 4 has now compared pretrained and scratch initialization on the same combined Experiment 1 + 3 data. The pretrained model scored higher on both the shared synthetic test split and the LOCO diagnostic. The synthetic split was evaluated in earlier experiments, so it is not an untouched project-level benchmark; LOCO boxes look generally plausible in the reviewed sample, but the broad category may include stackers and has not been fully subtype-audited. Detailed metrics and run paths are in the [Experiment 4 record](docs/experiments/experiment-04.md), with saved real-image samples in the local [annotation audit index](local/annotation_audit/index.html).
 
 ## 7. Reproducibility and project materials
 
